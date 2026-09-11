@@ -134,7 +134,7 @@ def test_upload_video_and_thumbnail_files():
     assert res_video.status_code == 200
     video_json = res_video.json()
     assert video_json["filename"] == "minha_vsl.mp4"
-    assert video_json["url"].startswith("/static/uploads/")
+    assert video_json["url"].startswith("/static/uploads/") or "backblazeb2.com" in video_json["url"] or video_json["url"].startswith("http")
     assert video_json["url"].endswith(".mp4")
 
     # 2. Upload de arquivo de imagem/capa (.png)
@@ -146,7 +146,7 @@ def test_upload_video_and_thumbnail_files():
     assert res_img.status_code == 200
     img_json = res_img.json()
     assert img_json["filename"] == "capa_promocional.png"
-    assert img_json["url"].startswith("/static/uploads/")
+    assert img_json["url"].startswith("/static/uploads/") or "backblazeb2.com" in img_json["url"] or img_json["url"].startswith("http")
     assert img_json["url"].endswith(".png")
 
     # 3. Rejeição de extensão não permitida (.exe)

@@ -1,4 +1,5 @@
 import os
+import io
 import shutil
 import uuid
 import mimetypes
@@ -66,18 +67,24 @@ class StorageService:
             guessed_type, _ = mimetypes.guess_type(original_filename)
             content_type = guessed_type or "application/octet-stream"
 
+        # Lê os bytes para memória garantindo que o fallback local funcione mesmo se o S3 fechar o stream
+        if hasattr(file_obj, "seek"):
+            try:
+                file_obj.seek(0)
+            except Exception:
+                pass
+
+        file_bytes = file_obj.read() if hasattr(file_obj, "read") else b""
+
         if self.is_backblaze_configured():
             try:
                 s3 = self.get_s3_client()
                 logger.info(f"Iniciando upload para Backblaze B2: bucket={settings.BACKBLAZE_BUCKET_NAME}, key={unique_key}")
 
-                # Garante que o ponteiro do arquivo esteja no início
-                if hasattr(file_obj, "seek"):
-                    file_obj.seek(0)
-
                 extra_args = {"ContentType": content_type}
+                stream = io.BytesIO(file_bytes)
                 s3.upload_fileobj(
-                    file_obj,
+                    stream,
                     settings.BACKBLAZE_BUCKET_NAME,
                     unique_key,
                     ExtraArgs=extra_args
@@ -101,11 +108,8 @@ class StorageService:
 
         # Fallback para armazenamento local
         destination = LOCAL_UPLOAD_DIR / unique_key
-        if hasattr(file_obj, "seek"):
-            file_obj.seek(0)
-
         with open(destination, "wb") as buffer:
-            shutil.copyfileobj(file_obj, buffer)
+            buffer.write(file_bytes)
 
         local_url = f"/static/uploads/{unique_key}"
         logger.info(f"Arquivo salvo com sucesso no storage local: {local_url}")

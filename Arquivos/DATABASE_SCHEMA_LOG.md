@@ -1,0 +1,15 @@
+# Registro de Alterações de Esquema do Banco de Dados (DATABASE_SCHEMA_LOG.md)
+
+Este arquivo registra todas as migrações e modificações estruturais nas tabelas do PostgreSQL.
+
+| Data | Tabela Afetada | Colunas / Alterações | Script de Migração | Motivo / Descrição | Status |
+|---|---|---|---|---|---|
+| 2026-09-08 | `videos` | Criação da tabela (id, title, video_url, thumbnail_url, duration, player_settings, created_at, updated_at) | `backend/scripts/create_video_tables.py` | Suporte a upload, streaming B2/local, modo turbo, smart autoplay, player flutuante, pitch delay e pixels | Concluído |
+| 2026-09-08 | `video_analytics` | Criação da tabela (id, video_id, event_type, watch_time_seconds, session_id, referer, created_at) | `backend/scripts/create_video_tables.py` | Métricas e telemetria analítica do player em tempo real | Concluído |
+| 2026-09-10 | `users` | Criação da tabela (id, email, password_hash, is_super_admin, created_at, updated_at) | `backend/scripts/create_user_tables.py` | Autenticação e gestão de usuários com criptografia Argon2id | Concluído |
+| 2026-09-11 | `users` | Adição da coluna `name VARCHAR(255) NULL` | `backend/scripts/add_user_name_column.py` | Exibição de nome amigável do perfil na barra lateral | Concluído |
+| 2026-09-11 | `users` | Adição da coluna `role VARCHAR(50) DEFAULT 'user' NOT NULL` | `backend/scripts/add_user_roles_and_invites.py` | Diferenciação de papéis (super_admin, admin, user) | Concluído |
+| 2026-09-11 | `user_invites` | Criação da tabela completa para links de convite (id, token, role, expires_at, is_used, used_by_email, created_by_user_id, created_at) | `backend/scripts/add_user_roles_and_invites.py` | Geração e validação de links únicos de convite com expiração | Concluído |
+| 2026-09-11 | `email_verification_codes` | Criação da tabela (id, email, token, code, expires_at, is_verified, created_at) | `backend/scripts/add_verification_codes_table.py` | Validação em duas etapas de contas via código de e-mail (Brevo) | Concluído |
+| 2026-09-11 | `backup_records` | Criação da tabela (id, filename, size_bytes, status, storage_path, is_external, created_at) | `backend/scripts/add_backup_tables.py` | Registro de backups gerados e sincronizados com Backblaze B2 (S3) | Concluído |
+| 2026-09-11 | `backup_schedules` | Criação da tabela (id, is_active, frequency, interval_value, s3_folder, retention_limit, last_backup_at, next_backup_at, updated_at) | `backend/scripts/add_backup_tables.py` | Configuração de agendamento automático de backups e retenção | Concluído |
