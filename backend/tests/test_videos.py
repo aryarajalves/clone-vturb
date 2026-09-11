@@ -325,7 +325,8 @@ def test_advanced_player_settings_persistence():
                 "text": "Seu vídeo já começou!",
                 "button_color": "#ef4444",
                 "button_text": "CLIQUE PARA OUVIR",
-                "restart_on_unmute": True
+                "restart_on_unmute": True,
+                "size": "small"
             },
             "floating_player": {
                 "enabled": True,
@@ -366,6 +367,7 @@ def test_advanced_player_settings_persistence():
 
     assert settings["smart_autoplay"]["enabled"] is True
     assert settings["smart_autoplay"]["button_text"] == "CLIQUE PARA OUVIR"
+    assert settings["smart_autoplay"]["size"] == "small"
     assert settings["floating_player"]["enabled"] is True
     assert settings["floating_player"]["position"] == "bottom-right"
     assert settings["pitch_delay"]["enabled"] is True
@@ -375,13 +377,14 @@ def test_advanced_player_settings_persistence():
     assert settings["domain_protection"]["enabled"] is True
     assert "meusite.com.br" in settings["domain_protection"]["allowed_domains"]
 
-    # 3. Atualiza desativando smart_autoplay e alterando tempo do pitch
+    # 3. Atualiza desativando smart_autoplay, alterando size para mini e alterando tempo do pitch
     update_res = client.put(f"/videos/{video_id}", json={
         "player_settings": {
             **settings,
             "smart_autoplay": {
                 **settings["smart_autoplay"],
-                "enabled": False
+                "enabled": False,
+                "size": "mini"
             },
             "pitch_delay": {
                 **settings["pitch_delay"],
@@ -392,6 +395,7 @@ def test_advanced_player_settings_persistence():
     assert update_res.status_code == 200
     updated_settings = update_res.json()["player_settings"]
     assert updated_settings["smart_autoplay"]["enabled"] is False
+    assert updated_settings["smart_autoplay"]["size"] == "mini"
     assert updated_settings["pitch_delay"]["time"] == 90
 
     # Limpeza

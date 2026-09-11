@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { VolumeX, Volume2, Sparkles, Check, Play } from 'lucide-react'
-import type { Video, SmartAutoplaySettings } from '../../types/video'
+import type { Video, SmartAutoplaySettings, SmartAutoplaySize } from '../../types/video'
 import { updateVideo, getMediaUrl } from '../../services/api'
+import { SmartAutoplayOverlay } from '../SmartAutoplayOverlay'
 
 interface VideoSmartAutoplayTabProps {
   video: Video
@@ -21,9 +22,11 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
     button_color: '#ef4444',
     button_text: 'CLIQUE PARA OUVIR',
     restart_on_unmute: false,
+    size: 'medium',
   }
 
   const [enabled, setEnabled] = useState(Boolean(current.enabled))
+  const [size, setSize] = useState<SmartAutoplaySize>(current.size || 'medium')
   const [text, setText] = useState(current.text || 'Seu vídeo já começou!')
   const [subtext, setSubtext] = useState(current.subtext || 'Clique no botão abaixo para ativar o som')
   const [buttonColor, setButtonColor] = useState(current.button_color || '#ef4444')
@@ -43,6 +46,7 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
           button_color: buttonColor,
           button_text: buttonText,
           restart_on_unmute: restartOnUnmute,
+          size,
         }
         const updatedSettings = {
           ...video.player_settings,
@@ -69,6 +73,7 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
         button_color: buttonColor,
         button_text: buttonText,
         restart_on_unmute: restartOnUnmute,
+        size,
       }
 
       const updatedSettings = {
@@ -195,6 +200,46 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
               Personalização da Chamada
             </h4>
 
+            {/* Seletor de Tamanho (Mini, Pequeno, Médio, Grande) */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
+                Tamanho da Chamada
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
+                {[
+                  { id: 'mini', label: 'Mini', desc: 'Compacto' },
+                  { id: 'small', label: 'Pequeno', desc: 'Mobile/9:16' },
+                  { id: 'medium', label: 'Médio', desc: 'Padrão' },
+                  { id: 'large', label: 'Grande', desc: 'Destaque' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    data-testid={`smart-autoplay-size-${opt.id}`}
+                    disabled={!enabled}
+                    onClick={() => setSize(opt.id as SmartAutoplaySize)}
+                    style={{
+                      padding: '0.55rem 0.35rem',
+                      borderRadius: '8px',
+                      border: size === opt.id ? '2px solid #ef4444' : '1px solid #cbd5e1',
+                      background: size === opt.id ? '#fef2f2' : '#ffffff',
+                      color: size === opt.id ? '#b91c1c' : '#475569',
+                      cursor: enabled ? 'pointer' : 'not-allowed',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2px',
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: '0.83rem' }}>{opt.label}</span>
+                    <span style={{ fontSize: '0.65rem', color: size === opt.id ? '#dc2626' : '#94a3b8' }}>{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
                 Texto Principal
@@ -302,6 +347,7 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
               style={{
                 position: 'relative',
                 width: '100%',
+                minHeight: '270px',
                 aspectRatio: '16/9',
                 borderRadius: '12px',
                 overflow: 'hidden',
@@ -323,43 +369,18 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
               )}
 
               {enabled ? (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '1.5rem',
-                    textAlign: 'center',
-                    background: 'rgba(0, 0, 0, 0.45)',
+                <SmartAutoplayOverlay
+                  settings={{
+                    enabled: true,
+                    text,
+                    subtext,
+                    button_color: buttonColor,
+                    button_text: buttonText,
+                    restart_on_unmute: restartOnUnmute,
+                    size,
                   }}
-                >
-                  <span style={{ color: '#ffffff', fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.35rem' }}>
-                    {text}
-                  </span>
-                  <span style={{ color: '#cbd5e1', fontSize: '0.8rem', marginBottom: '1rem' }}>
-                    {subtext}
-                  </span>
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.65rem 1.4rem',
-                      borderRadius: '50px',
-                      backgroundColor: buttonColor,
-                      color: '#ffffff',
-                      fontWeight: 800,
-                      fontSize: '0.85rem',
-                      boxShadow: `0 4px 15px ${buttonColor}88`,
-                    }}
-                  >
-                    <Volume2 size={16} />
-                    <span>{buttonText}</span>
-                  </div>
-                </div>
+                  onUnmute={() => {}}
+                />
               ) : (
                 <div
                   style={{

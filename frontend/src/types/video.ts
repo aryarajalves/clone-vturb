@@ -1,3 +1,5 @@
+export type SmartAutoplaySize = 'mini' | 'small' | 'medium' | 'large'
+
 export interface SmartAutoplaySettings {
   enabled: boolean
   text?: string
@@ -5,6 +7,7 @@ export interface SmartAutoplaySettings {
   button_color?: string
   button_text?: string
   restart_on_unmute?: boolean
+  size?: SmartAutoplaySize
 }
 
 export interface FloatingPlayerSettings {

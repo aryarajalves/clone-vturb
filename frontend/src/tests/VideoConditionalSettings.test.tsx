@@ -86,6 +86,8 @@ describe('Renderização Condicional das Configurações de Vídeo (Ocultar quan
     // Agora o formulário e prévia inferior devem estar visíveis
     expect(screen.getByTestId('smart-autoplay-form-container')).toBeInTheDocument()
     expect(screen.getByTestId('smart-autoplay-button-text-input')).toBeInTheDocument()
+    expect(screen.getByTestId('smart-autoplay-size-small')).toBeInTheDocument()
+    expect(screen.getByTestId('smart-autoplay-size-mini')).toBeInTheDocument()
   })
 
   it('Smart Autoplay: ao desativar o switch, executa auto-save e oculta conteúdo inferior', async () => {

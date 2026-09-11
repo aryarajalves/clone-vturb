@@ -10,6 +10,7 @@ class SmartAutoplaySettings(BaseModel):
     button_color: str = "#ef4444"
     button_text: str = "CLIQUE PARA OUVIR"
     restart_on_unmute: bool = False
+    size: Optional[str] = "medium"
 
 class FloatingPlayerSettings(BaseModel):
     model_config = ConfigDict(extra="allow")

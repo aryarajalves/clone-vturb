@@ -104,6 +104,16 @@ describe('Mecânicas Avançadas do Vídeo - Configurações e Player', () => {
     const toggleBtn = screen.getByTestId('smart-autoplay-toggle')
     fireEvent.click(toggleBtn)
 
+    // Altera tamanho para Pequeno e verifica na prévia
+    const sizeSmallBtn = screen.getByTestId('smart-autoplay-size-small')
+    fireEvent.click(sizeSmallBtn)
+    expect(screen.getByTestId('smart-autoplay-card')).toHaveAttribute('data-size', 'small')
+
+    // Altera tamanho para Mini
+    const sizeMiniBtn = screen.getByTestId('smart-autoplay-size-mini')
+    fireEvent.click(sizeMiniBtn)
+    expect(screen.getByTestId('smart-autoplay-card')).toHaveAttribute('data-size', 'mini')
+
     // Altera texto do botão
     const btnTextInput = screen.getByTestId('smart-autoplay-button-text-input')
     fireEvent.change(btnTextInput, { target: { value: 'OUVIR AGORA' } })
@@ -376,6 +386,7 @@ describe('Mecânicas Avançadas do Vídeo - Configurações e Player', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('smart-autoplay-overlay')).toBeInTheDocument()
+      expect(screen.getByTestId('smart-autoplay-card')).toHaveAttribute('data-size', 'medium')
       expect(screen.getByTestId('smart-autoplay-unmute-btn')).toHaveTextContent('CLIQUE PARA OUVIR')
     })
 
