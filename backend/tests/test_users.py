@@ -28,8 +28,9 @@ def test_list_users_includes_super_admin():
     assert len(users) >= 1
 
     super_admins = [u for u in users if u["is_super_admin"] or u["role"] == "super_admin"]
-    assert len(super_admins) >= 1
-    assert any(u["email"] == settings.SUPER_ADMIN_EMAIL.lower() for u in super_admins)
+    assert len(super_admins) == 1
+    assert super_admins[0]["email"] == settings.SUPER_ADMIN_EMAIL.lower()
+    assert super_admins[0]["role"] == "super_admin"
 
 def test_super_admin_cannot_be_deleted():
     token = get_admin_token()
@@ -202,3 +203,25 @@ def test_register_via_invite_with_strong_password_rules():
     del_res = client.delete(f"/users/{created_user_id}", headers=headers)
     assert del_res.status_code == 200
     assert "excluído com sucesso" in del_res.json()["detail"]
+
+def test_delete_invite():
+    token = get_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Gera convite
+    res_inv = client.post("/users/invites", headers=headers, json={
+        "role": "user",
+        "duration_hours": 24
+    })
+    assert res_inv.status_code == 200
+    inv_id = res_inv.json()["id"]
+
+    # Deleta convite com sucesso
+    del_res = client.delete(f"/users/invites/{inv_id}", headers=headers)
+    assert del_res.status_code == 200
+    assert "Convite excluído com sucesso" in del_res.json()["detail"]
+
+    # Tentativa de deletar convite inexistente retorna 404
+    del_not_found = client.delete(f"/users/invites/{inv_id}", headers=headers)
+    assert del_not_found.status_code == 404
+

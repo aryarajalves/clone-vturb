@@ -11,6 +11,7 @@ vi.mock('../services/api', () => ({
   fetchInvites: vi.fn(),
   deleteUser: vi.fn(),
   createInvite: vi.fn(),
+  deleteInvite: vi.fn(),
 }))
 
 describe('Gestão de Usuários - Frontend', () => {
@@ -55,6 +56,7 @@ describe('Gestão de Usuários - Frontend', () => {
     vi.mocked(api.fetchUsers).mockResolvedValue([mockSuperAdmin, mockAdmin, mockUser])
     vi.mocked(api.fetchInvites).mockResolvedValue(mockInvites)
     vi.mocked(api.deleteUser).mockResolvedValue({ detail: 'Usuário excluído.' })
+    vi.mocked(api.deleteInvite).mockResolvedValue({ detail: 'Convite excluído.' })
   })
 
   it('Sidebar renderiza botão Gestão de Usuário e aciona onSelectTab', () => {
@@ -163,5 +165,37 @@ describe('Gestão de Usuários - Frontend', () => {
     // Exibe link gerado e botão de copiar
     expect(screen.getByTestId('invite-generated-box')).toBeInTheDocument()
     expect(screen.getByTestId('btn-copy-invite-link')).toBeInTheDocument()
+  })
+
+  it('permite alternar para a aba Convites Gerados e excluir um convite com confirmação', async () => {
+    const showToast = vi.fn()
+    render(<UserManagementView currentUser={mockSuperAdmin} showToast={showToast} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-generated-invites')).toBeInTheDocument()
+    })
+
+    // Alterna para a aba Convites Gerados
+    fireEvent.click(screen.getByTestId('tab-generated-invites'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('invites-section')).toBeInTheDocument()
+      expect(screen.getByTestId('btn-delete-invite-inv-1')).toBeInTheDocument()
+    })
+
+    // Clica para excluir convite
+    fireEvent.click(screen.getByTestId('btn-delete-invite-inv-1'))
+
+    // Modal de confirmação aberto
+    expect(screen.getByText('Excluir Convite')).toBeInTheDocument()
+
+    // Confirma exclusão
+    const confirmBtn = screen.getByText('Sim, Excluir')
+    fireEvent.click(confirmBtn)
+
+    await waitFor(() => {
+      expect(api.deleteInvite).toHaveBeenCalledWith('inv-1')
+      expect(showToast).toHaveBeenCalledWith(expect.stringContaining('excluído com sucesso'))
+    })
   })
 })

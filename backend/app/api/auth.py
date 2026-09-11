@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, hash_password, create_access_token
 from app.models.user import User, UserInvite
@@ -61,9 +62,14 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             detail="E-mail ou senha incorretos."
         )
 
-    # Assegura que super admin tenha role super_admin
-    if user.is_super_admin and user.role != "super_admin":
+    # Assegura que APENAS o email configurado na .env seja o SuperAdmin oficial
+    official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+    is_official_super = (user.email.strip().lower() == official_email)
+    user.is_super_admin = is_official_super
+    if is_official_super:
         user.role = "super_admin"
+    elif user.role == "super_admin":
+        user.role = "admin"
 
     access_token = create_access_token(data={
         "sub": user.id,
@@ -82,8 +88,14 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     """Retorna os dados do usuário autenticado a partir do token JWT."""
-    if current_user.is_super_admin and current_user.role != "super_admin":
+    official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+    if current_user.email.strip().lower() == official_email:
+        current_user.is_super_admin = True
         current_user.role = "super_admin"
+    else:
+        current_user.is_super_admin = False
+        if current_user.role == "super_admin":
+            current_user.role = "admin"
     return UserResponse.model_validate(current_user)
 
 @router.get("/invite/{token}", response_model=InviteValidateResponse)

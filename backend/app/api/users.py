@@ -5,6 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User, UserInvite
@@ -22,12 +23,18 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Lista todos os usuários cadastrados no sistema, incluindo o SuperAdmin."""
+    """Lista todos os usuários cadastrados no sistema, garantindo um único SuperAdmin oficial."""
     users = db.query(User).order_by(User.created_at.asc()).all()
-    # Assegura que o SuperAdmin tenha a role 'super_admin'
+    official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+
     for u in users:
-        if u.is_super_admin and u.role != "super_admin":
+        if u.email.strip().lower() == official_email:
             u.role = "super_admin"
+            u.is_super_admin = True
+        else:
+            if u.is_super_admin or u.role == "super_admin":
+                u.is_super_admin = False
+                u.role = "admin"
     return users
 
 @router.delete("/{user_id}")
@@ -116,3 +123,22 @@ def list_invites(
         item.invite_url = f"/invite/{inv.token}"
         results.append(item)
     return results
+
+@router.delete("/invites/{invite_id}")
+def delete_invite(
+    invite_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Exclui um link de convite."""
+    invite = db.query(UserInvite).filter(UserInvite.id == invite_id).first()
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Convite não encontrado."
+        )
+    db.delete(invite)
+    db.commit()
+    logger.info(f"Convite {invite_id} excluído com sucesso por {current_user.email}")
+    return {"detail": "Convite excluído com sucesso."}
+

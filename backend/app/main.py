@@ -48,6 +48,19 @@ def init_super_admin():
             user.is_super_admin = True
             db.commit()
             logger.info("Credenciais do Super Admin sincronizadas com sucesso!")
+
+        # Garante a regra estrita de apenas 1 Super Admin oficial no sistema:
+        # Qualquer outro usuário com super_admin é despromovido para admin comum
+        other_supers = db.query(User).filter(
+            User.email.notilike(email),
+            (User.is_super_admin == True) | (User.role == "super_admin")
+        ).all()
+        for other in other_supers:
+            logger.info(f"Despromovendo usuário {other.email} para admin (SuperAdmin oficial único: {email})")
+            other.is_super_admin = False
+            other.role = "admin"
+        if other_supers:
+            db.commit()
     except Exception as exc:
         logger.error(f"Erro ao inicializar conta de Super Admin: {exc}")
         db.rollback()

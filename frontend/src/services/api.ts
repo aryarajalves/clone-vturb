@@ -305,5 +305,20 @@ export async function registerViaInvite(payload: RegisterInvitePayload): Promise
   return data
 }
 
+export async function deleteInvite(inviteId: string): Promise<{ detail: string }> {
+  const res = await fetch(`${API_BASE}/users/invites/${inviteId}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao excluir convite.')
+  }
+  return res.json()
+}
+
+
+
 
 

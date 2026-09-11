@@ -214,27 +214,33 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
       data-testid="accept-invite-view"
       style={{
         minHeight: '100vh',
+        width: '100vw',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         backgroundColor: '#f1f5f9',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        padding: '1.5rem',
+        padding: '2.5rem 1rem',
+        boxSizing: 'border-box',
+        overflowY: 'auto',
       }}
     >
       <div
         style={{
           width: '100%',
-          maxWidth: '480px',
+          maxWidth: '460px',
           backgroundColor: '#ffffff',
           borderRadius: '20px',
-          padding: '2.5rem',
+          padding: '2rem 2.25rem',
           boxShadow: '0 20px 35px -10px rgba(0, 0, 0, 0.08)',
           border: '1px solid #e2e8f0',
+          margin: 'auto 0',
+          boxSizing: 'border-box',
         }}
       >
         {/* Cabeçalho */}
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
           <div
             style={{
               display: 'inline-flex',
@@ -242,28 +248,28 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
               gap: '0.5rem',
               backgroundColor: '#fee2e2',
               color: '#dc2626',
-              padding: '0.4rem 0.85rem',
+              padding: '0.35rem 0.8rem',
               borderRadius: '9999px',
-              fontSize: '0.85rem',
+              fontSize: '0.8rem',
               fontWeight: 700,
-              marginBottom: '1rem',
+              marginBottom: '0.65rem',
             }}
           >
-            <Play size={14} fill="#dc2626" />
+            <Play size={13} fill="#dc2626" />
             <span>Clone do VTurb</span>
           </div>
 
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.4rem' }}>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.35rem' }}>
             Ativação de Conta
           </h1>
-          <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
             Crie sua conta para acessar o painel do VTurb.
           </p>
 
           {validation && (
             <div
               style={{
-                marginTop: '1rem',
+                marginTop: '0.75rem',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.4rem',
@@ -288,9 +294,9 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
         </div>
 
         {/* Formulário de Cadastro */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
           {/* E-mail */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
               Seu E-mail
             </label>
@@ -303,7 +309,7 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
               placeholder="exemplo@seuemail.com"
               style={{
                 width: '100%',
-                padding: '0.75rem 1rem',
+                padding: '0.65rem 0.9rem',
                 borderRadius: '10px',
                 border: '1px solid #cbd5e1',
                 fontSize: '0.9rem',
@@ -315,7 +321,7 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
           </div>
 
           {/* Senha */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
               Senha de Acesso
             </label>
@@ -329,7 +335,7 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
                 placeholder="Crie uma senha forte"
                 style={{
                   width: '100%',
-                  padding: '0.75rem 2.5rem 0.75rem 1rem',
+                  padding: '0.65rem 2.5rem 0.65rem 0.9rem',
                   borderRadius: '10px',
                   border: '1px solid #cbd5e1',
                   fontSize: '0.9rem',
@@ -360,7 +366,7 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
           </div>
 
           {/* Confirmar Senha */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
               Confirmar Senha
             </label>
@@ -373,7 +379,7 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
               placeholder="Digite a senha novamente"
               style={{
                 width: '100%',
-                padding: '0.75rem 1rem',
+                padding: '0.65rem 0.9rem',
                 borderRadius: '10px',
                 border: '1px solid #cbd5e1',
                 fontSize: '0.9rem',
@@ -391,13 +397,13 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
               backgroundColor: '#f8fafc',
               border: '1px solid #e2e8f0',
               borderRadius: '12px',
-              padding: '0.9rem 1rem',
+              padding: '0.75rem 0.9rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.4rem',
+              gap: '0.35rem',
             }}
           >
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '0.2rem' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '0.15rem' }}>
               Requisitos de Segurança da Senha:
             </div>
             {renderRequirement('No mínimo 12 caracteres', hasMin12, 'req-min-12')}
@@ -419,7 +425,7 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
               color: '#ffffff',
               border: 'none',
               borderRadius: '10px',
-              padding: '0.85rem 1.5rem',
+              padding: '0.75rem 1.5rem',
               fontSize: '0.95rem',
               fontWeight: 600,
               cursor: isPasswordStrong && passwordsMatch && email && !submitting ? 'pointer' : 'not-allowed',
@@ -429,7 +435,7 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
               gap: '0.5rem',
               boxShadow: isPasswordStrong && passwordsMatch ? '0 4px 12px rgba(2, 132, 199, 0.25)' : 'none',
               transition: 'all 0.2s ease',
-              marginTop: '0.25rem',
+              marginTop: '0.2rem',
             }}
           >
             {submitting ? 'Criando Conta...' : 'Criar Minha Conta'}
@@ -440,3 +446,4 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
     </div>
   )
 }
+

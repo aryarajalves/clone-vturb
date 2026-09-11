@@ -7,6 +7,7 @@ interface DeleteConfirmModalProps {
   title: string
   itemName?: string
   itemCount?: number
+  description?: string
   loading?: boolean
   onConfirm: () => void
   onCancel: () => void
@@ -17,6 +18,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   title,
   itemName = '',
   itemCount,
+  description,
   loading = false,
   onConfirm,
   onCancel,
@@ -80,7 +82,9 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
         </h3>
 
         <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '1.75rem', lineHeight: '1.5' }}>
-          {itemCount && itemCount > 1 ? (
+          {description ? (
+            description
+          ) : itemCount && itemCount > 1 ? (
             <>
               Tem certeza de que deseja excluir os <strong style={{ color: '#f87171' }}>{itemCount} vídeos selecionados</strong>? Todas as métricas de analytics vinculadas serão apagadas permanentemente.
             </>

@@ -43,9 +43,13 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
 
 ### 👥 Gestão de Usuários e Links de Convite
 - **Navegação por Abas na Barra Lateral**: Acesso direto entre "Meus vídeos" e "Gestão de Usuário".
-- **SuperAdmin Protegido**: O SuperAdmin é exibido na lista com badge imutável e proteção rígida contra exclusão via interface e API (`HTTP 400`).
-- **Geração de Convites Personalizados**: Modal para criação de convites com perfil restrito a **Admin** ou **Usuário** (o SuperAdmin não pode ser gerado via convite) e tempo de expiração customizável (`1h`, `6h`, `24h`, `48h`, `7 dias`).
+- **Abas Dedicadas com Contadores**: Separação clara entre **"Usuários Ativos"** e **"Convites Gerados"**, cada uma com contadores numéricos dinâmicos em tempo real.
+- **SuperAdmin Oficial Único**: Protegido e vinculado estritamente ao e-mail definido em `SUPER_ADMIN_EMAIL` na `.env`, exibido na lista com badge exclusivo `SUPERADMIN` e proteção contra exclusão via interface e backend (`HTTP 400`). Demais cadastros são automaticamente normalizados como administradores ou usuários padrão.
+- **Geração de Convites Personalizados**: Modal para criação de convites com perfil restrito a **Admin** ou **Usuário** (sem criação de convites para SuperAdmin) e tempo de expiração customizável (`1h`, `6h`, `24h`, `48h`, `7 dias`).
+- **Exclusão de Convites com Confirmação**: Botão de exclusão (lixeira) para remover convites obsoletos, com popup centralizado de confirmação à prova de cliques acidentais.
+- **Cópia de Link Otimizada e Toasts no Topo Direito**: Ação de cópia do link sem rolar a tela ou atualizar a página, com notificações (toasts) padronizadas no canto superior direito da tela.
 - **Página de Cadastro Seguro via Convite (`/invite/:token`)**:
+  - Layout totalmente responsivo e centralizado, com espaçamento equilibrado evitando cortes superiores ou inferiores em qualquer resolução.
   - Validação do convite em tempo real (bloqueia links expirados ou já utilizados).
   - Política de **Senha Forte de 12+ caracteres** com checklist visual dinâmico (mínimo 12 caracteres, maiúscula, minúscula, número, caractere especial e confirmação idêntica).
   - Criptografia com Argon2id ao persistir no banco de dados.

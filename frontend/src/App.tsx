@@ -175,7 +175,7 @@ function App() {
             data-testid="toast-notification"
             style={{
               position: 'fixed',
-              bottom: '24px',
+              top: '24px',
               right: '24px',
               background: 'linear-gradient(135deg, #10b981, #059669)',
               color: '#fff',
@@ -247,7 +247,7 @@ function App() {
           data-testid="toast-notification"
           style={{
             position: 'fixed',
-            bottom: '24px',
+            top: '24px',
             right: '24px',
             background: 'linear-gradient(135deg, #10b981, #059669)',
             color: '#fff',
