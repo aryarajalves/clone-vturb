@@ -1,5 +1,12 @@
 import type { Video, VideoMetrics, PlayerSettings } from '../types/video'
-import type { LoginResponse, User } from '../types/auth'
+import type {
+  LoginResponse,
+  User,
+  UserInvite,
+  CreateInvitePayload,
+  InviteValidation,
+  RegisterInvitePayload,
+} from '../types/auth'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8003'
 const TOKEN_KEY = 'vturb_access_token'
@@ -219,5 +226,84 @@ export function getMediaUrl(url?: string): string {
   }
   return `${API_BASE}${url}`
 }
+
+export async function fetchUsers(): Promise<User[]> {
+  const res = await fetch(`${API_BASE}/users/`, {
+    headers: { ...authHeaders() },
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao carregar lista de usuários.')
+  }
+  return res.json()
+}
+
+export async function deleteUser(userId: string): Promise<{ detail: string }> {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao excluir usuário.')
+  }
+  return res.json()
+}
+
+export async function createInvite(payload: CreateInvitePayload): Promise<UserInvite> {
+  const res = await fetch(`${API_BASE}/users/invites`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify(payload),
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao gerar link de convite.')
+  }
+  return res.json()
+}
+
+export async function fetchInvites(): Promise<UserInvite[]> {
+  const res = await fetch(`${API_BASE}/users/invites`, {
+    headers: { ...authHeaders() },
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao carregar convites.')
+  }
+  return res.json()
+}
+
+export async function validateInvite(token: string): Promise<InviteValidation> {
+  const res = await fetch(`${API_BASE}/auth/invite/${encodeURIComponent(token)}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Link de convite inválido ou expirado.')
+  }
+  return res.json()
+}
+
+export async function registerViaInvite(payload: RegisterInvitePayload): Promise<LoginResponse> {
+  const res = await fetch(`${API_BASE}/auth/register-invite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao cadastrar usuário.')
+  }
+  const data: LoginResponse = await res.json()
+  setAuthToken(data.access_token)
+  return data
+}
+
 
 

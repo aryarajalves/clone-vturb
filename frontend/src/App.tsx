@@ -18,6 +18,8 @@ import { EmbedPlayer } from './components/EmbedPlayer'
 import { VideoDetailView } from './components/video-detail/VideoDetailView'
 import { VideoCreateView } from './components/video-create/VideoCreateView'
 import { LoginView } from './components/auth/LoginView'
+import { UserManagementView } from './components/users/UserManagementView'
+import { AcceptInviteView } from './components/auth/AcceptInviteView'
 import './App.css'
 
 function App() {
@@ -33,7 +35,14 @@ function App() {
     return <EmbedPlayer videoId={embedId} />
   }
 
+  const inviteToken =
+    searchParams.get('invite') ||
+    (window.location.pathname.startsWith('/invite/')
+      ? window.location.pathname.replace('/invite/', '')
+      : null)
+
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [currentTab, setCurrentTab] = useState<'videos' | 'users'>('videos')
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,6 +63,19 @@ function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3000)
+  }
+
+  // Página pública de cadastro via convite
+  if (inviteToken) {
+    return (
+      <AcceptInviteView
+        token={inviteToken}
+        onSuccess={() => {
+          window.location.href = '/'
+        }}
+        showToast={showToast}
+      />
+    )
   }
 
   const loadVideos = useCallback(async () => {
@@ -245,20 +267,29 @@ function App() {
         </div>
       )}
 
-      {/* Topbar VTurb (botão Novo Vídeo oculto durante a edição e criação) */}
+      {/* Topbar VTurb (botão Novo Vídeo oculto durante a edição e criação, visível apenas na aba vídeos) */}
       <Topbar
         onOpenImport={() => setIsCreatingVideo(true)}
-        showCreateButton={!selectedVideo && !isCreatingVideo}
+        showCreateButton={!selectedVideo && !isCreatingVideo && currentTab === 'videos'}
         user={currentUser}
         onLogout={handleLogout}
       />
 
       {/* Layout Principal */}
       <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
-        {/* Barra Lateral Global (Meus vídeos) - Oculta durante a edição ou criação */}
-        {!selectedVideo && !isCreatingVideo && <Sidebar />}
+        {/* Barra Lateral Global (Meus vídeos e Gestão de Usuário) - Oculta durante a edição ou criação */}
+        {!selectedVideo && !isCreatingVideo && (
+          <Sidebar
+            currentTab={currentTab}
+            onSelectTab={(tab) => {
+              setCurrentTab(tab)
+              setSelectedVideo(null)
+              setIsCreatingVideo(false)
+            }}
+          />
+        )}
 
-        {/* Alternância entre Tela de Lista, Painel de Criação e Painel de Gerenciamento do Vídeo */}
+        {/* Alternância entre Tela de Lista, Painel de Criação, Gerenciamento de Vídeo ou Gestão de Usuários */}
         {selectedVideo ? (
           <VideoDetailView
             video={selectedVideo}
@@ -280,6 +311,8 @@ function App() {
             }}
             showToast={showToast}
           />
+        ) : currentTab === 'users' ? (
+          <UserManagementView currentUser={currentUser} showToast={showToast} />
         ) : (
           <main style={{ flex: 1, padding: '2rem 3rem', width: '100%', minWidth: 0, boxSizing: 'border-box', height: '100%', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

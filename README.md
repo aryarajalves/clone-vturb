@@ -41,6 +41,15 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
   - **E-mail:** `admin@vturb.com`
   - **Senha:** `Admin123456!`
 
+### 👥 Gestão de Usuários e Links de Convite
+- **Navegação por Abas na Barra Lateral**: Acesso direto entre "Meus vídeos" e "Gestão de Usuário".
+- **SuperAdmin Protegido**: O SuperAdmin é exibido na lista com badge imutável e proteção rígida contra exclusão via interface e API (`HTTP 400`).
+- **Geração de Convites Personalizados**: Modal para criação de convites com perfil restrito a **Admin** ou **Usuário** (o SuperAdmin não pode ser gerado via convite) e tempo de expiração customizável (`1h`, `6h`, `24h`, `48h`, `7 dias`).
+- **Página de Cadastro Seguro via Convite (`/invite/:token`)**:
+  - Validação do convite em tempo real (bloqueia links expirados ou já utilizados).
+  - Política de **Senha Forte de 12+ caracteres** com checklist visual dinâmico (mínimo 12 caracteres, maiúscula, minúscula, número, caractere especial e confirmação idêntica).
+  - Criptografia com Argon2id ao persistir no banco de dados.
+
 ---
 
 ## 📁 Estrutura de Pastas
