@@ -1,9 +1,60 @@
 import type { Video, VideoMetrics, PlayerSettings } from '../types/video'
+import type { LoginResponse, User } from '../types/auth'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8003'
+const TOKEN_KEY = 'vturb_access_token'
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function setAuthToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function removeAuthToken(): void {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+export function authHeaders(): Record<string, string> {
+  const token = getAuthToken()
+  if (!token) return {}
+  return { Authorization: `Bearer ${token}` }
+}
+
+export async function loginApi(credentials: { email: string; password: string }): Promise<LoginResponse> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Falha ao autenticar.')
+  }
+  const data: LoginResponse = await res.json()
+  setAuthToken(data.access_token)
+  return data
+}
+
+export async function getCurrentUserApi(): Promise<User> {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    headers: {
+      ...authHeaders(),
+    },
+  })
+  if (!res.ok) {
+    throw new Error('Sessão expirada ou não autenticado.')
+  }
+  return res.json()
+}
 
 export async function fetchVideos(): Promise<Video[]> {
-  const res = await fetch(`${API_BASE}/videos/`)
+  const res = await fetch(`${API_BASE}/videos/`, {
+    headers: {
+      ...authHeaders(),
+    },
+  })
   if (!res.ok) throw new Error('Falha ao carregar lista de vídeos.')
   return res.json()
 }
@@ -23,7 +74,10 @@ export async function createVideo(data: {
 }): Promise<Video> {
   const res = await fetch(`${API_BASE}/videos/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error('Falha ao criar o vídeo.')
@@ -41,7 +95,10 @@ export async function updateVideo(
 ): Promise<Video> {
   const res = await fetch(`${API_BASE}/videos/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error('Falha ao atualizar o vídeo.')
@@ -51,6 +108,9 @@ export async function updateVideo(
 export async function deleteVideo(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/videos/${id}`, {
     method: 'DELETE',
+    headers: {
+      ...authHeaders(),
+    },
   })
   if (!res.ok) throw new Error('Falha ao excluir o vídeo.')
 }
@@ -58,7 +118,10 @@ export async function deleteVideo(id: string): Promise<void> {
 export async function bulkDeleteVideos(ids: string[]): Promise<{ deleted_count: number; deleted_ids: string[] }> {
   const res = await fetch(`${API_BASE}/videos/bulk-delete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
     body: JSON.stringify({ video_ids: ids }),
   })
   if (!res.ok) throw new Error('Falha ao excluir os vídeos selecionados.')
@@ -79,7 +142,11 @@ export async function fetchVideoMetrics(
   if (params?.end_date) query.set('end_date', params.end_date)
 
   const qs = query.toString() ? `?${query.toString()}` : ''
-  const res = await fetch(`${API_BASE}/videos/${id}/metrics${qs}`)
+  const res = await fetch(`${API_BASE}/videos/${id}/metrics${qs}`, {
+    headers: {
+      ...authHeaders(),
+    },
+  })
   if (!res.ok) throw new Error('Falha ao obter métricas do vídeo.')
   return res.json()
 }
@@ -110,6 +177,9 @@ export async function uploadFile(file: File): Promise<{ filename: string; url: s
 
   const res = await fetch(`${API_BASE}/videos/upload`, {
     method: 'POST',
+    headers: {
+      ...authHeaders(),
+    },
     body: formData,
   })
 
@@ -132,4 +202,5 @@ export function getMediaUrl(url?: string): string {
   }
   return `${API_BASE}${url}`
 }
+
 

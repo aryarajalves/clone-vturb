@@ -4,17 +4,63 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 from app.core.config import settings
+from app.core.database import SessionLocal
+from app.models.user import User
+from app.core.security import hash_password, verify_password
 from app.api.health import router as health_router
 from app.api.videos import router as videos_router
+from app.api.auth import router as auth_router
 
 logger = logging.getLogger("projetovturb")
 logging.basicConfig(level=logging.INFO)
 
+def init_super_admin():
+    """Garante que a conta de Super Admin configurada no .env exista e esteja atualizada."""
+    email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+    password = settings.SUPER_ADMIN_PASSWORD
+    if not email or not password:
+        logger.warning("SUPER_ADMIN_EMAIL ou SUPER_ADMIN_PASSWORD não configurados no .env")
+        return
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email.ilike(email)).first()
+        if not user:
+            logger.info(f"Criando conta inicial de Super Admin: {email}")
+            user = User(
+                email=email,
+                password_hash=hash_password(password),
+                is_super_admin=True
+            )
+            db.add(user)
+            db.commit()
+            logger.info("Conta de Super Admin criada com sucesso!")
+        else:
+            # Sincroniza senha se mudou no .env
+            if not verify_password(password, user.password_hash):
+                logger.info(f"Atualizando credenciais do Super Admin: {email}")
+                user.password_hash = hash_password(password)
+                user.is_super_admin = True
+                db.commit()
+                logger.info("Credenciais do Super Admin sincronizadas com sucesso!")
+    except Exception as exc:
+        logger.error(f"Erro ao inicializar conta de Super Admin: {exc}")
+        db.rollback()
+    finally:
+        db.close()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_super_admin()
+    yield
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API do ProjetoVturb desenvolvida com FastAPI e PostgreSQL",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
 # Exception Handler Global (regra obrigatória)
@@ -41,6 +87,7 @@ static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(videos_router)
 
 @app.get("/")

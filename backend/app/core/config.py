@@ -25,4 +25,13 @@ class Settings:
     BACKBLAZE_ENDPOINT_URL: str = os.getenv("BACKBLAZE_ENDPOINT_URL", "")
     BACKBLAZE_CDN_URL: str = os.getenv("BACKBLAZE_CDN_URL", "")
 
+    # Credenciais do Super Admin
+    SUPER_ADMIN_EMAIL: str = os.getenv("SUPER_ADMIN_EMAIL", "admin@vturb.com")
+    SUPER_ADMIN_PASSWORD: str = os.getenv("SUPER_ADMIN_PASSWORD", "Admin123456!")
+
+    # Autenticação JWT
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "sua-chave-secreta-super-segura-vturb-jwt-2026")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+
 settings = Settings()

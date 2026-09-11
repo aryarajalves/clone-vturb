@@ -1,13 +1,21 @@
 import React from 'react'
-import { Plus, Play } from 'lucide-react'
+import { Plus, Play, LogOut } from 'lucide-react'
+import type { User } from '../types/auth'
 
 interface TopbarProps {
   totalPlays?: number
   onOpenImport: () => void
   showCreateButton?: boolean
+  user?: User | null
+  onLogout?: () => void
 }
 
-export const Topbar: React.FC<TopbarProps> = ({ onOpenImport, showCreateButton = true }) => {
+export const Topbar: React.FC<TopbarProps> = ({
+  onOpenImport,
+  showCreateButton = true,
+  user,
+  onLogout,
+}) => {
   return (
     <header
       data-testid="topbar"
@@ -55,8 +63,8 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenImport, showCreateButton =
         </span>
       </div>
 
-      {/* Botão Novo Vídeo (visível apenas fora da tela de edição) */}
-      <div>
+      {/* Ações e Perfil do Usuário */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         {showCreateButton && (
           <button
             type="button"
@@ -81,6 +89,72 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenImport, showCreateButton =
             <Plus size={16} />
             Novo Vídeo
           </button>
+        )}
+
+        {user && (
+          <div
+            data-testid="topbar-user-section"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              paddingLeft: '1rem',
+              borderLeft: '1px solid #e5e7eb',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span
+                  data-testid="user-email-display"
+                  style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1f2937' }}
+                >
+                  {user.email}
+                </span>
+                {user.is_super_admin && (
+                  <span
+                    data-testid="user-superadmin-badge"
+                    style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      backgroundColor: '#fee2e2',
+                      color: '#dc2626',
+                      padding: '0.15rem 0.4rem',
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Admin
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {onLogout && (
+              <button
+                type="button"
+                data-testid="btn-logout"
+                onClick={onLogout}
+                title="Sair da conta"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.45rem 0.75rem',
+                  backgroundColor: '#f3f4f6',
+                  color: '#4b5563',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <LogOut size={14} />
+                <span>Sair</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
     </header>

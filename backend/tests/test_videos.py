@@ -1,7 +1,22 @@
+import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.api.deps import get_current_user
+from app.models.user import User
 
 client = TestClient(app)
+
+mock_admin = User(
+    id="test-admin-id",
+    email="admin@vturb.com",
+    is_super_admin=True
+)
+
+@pytest.fixture(autouse=True)
+def override_auth_dependency():
+    app.dependency_overrides[get_current_user] = lambda: mock_admin
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 def test_video_crud_and_analytics_flow():
     # 1. Criação do Vídeo

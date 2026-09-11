@@ -30,8 +30,15 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
 - **Segurança & Domínios Autorizados (Whitelist & Anti-Download)**:
   - Restringe a reprodução do player exclusivamente aos domínios autorizados, bloqueando tentativas de cópia não autorizadas.
   - Proteção anti-download (desativa clique direito e downloads nativos).
-- **Interface Condicional Limpa**:
-  - Formulários inferiores e prévias expandem exclusivamente quando a funcionalidade estiver ativada, mantendo as telas limpas e realizando auto-save imediato ao desligar o switch.
+### 🔐 Autenticação e Segurança de Acesso
+- **Tela de Login Moderna**: Layout em 2 colunas com formulário de login (e-mail, senha com visualização toggle e loading) à esquerda e imagem/showcase com tema de alta conversão à direita.
+- **Conta Super Admin Automática**: Credenciais configuradas no `.env` (`SUPER_ADMIN_EMAIL` e `SUPER_ADMIN_PASSWORD`), sincronizadas automaticamente no banco de dados na inicialização do backend.
+- **Criptografia Memory-Hard (Argon2id)**: Senhas criptografadas com `argon2-cffi` utilizando 64MB de memória RAM por cálculo (`memory_cost=65536`), 3 iterações e 4 threads, inviabilizando ataques de força bruta com GPU/ASIC.
+- **Proteção de Rotas com Tokens JWT**: Todas as rotas administrativas exigem cabeçalho `Authorization: Bearer <token>`.
+- **Embeds e Telemetria Públicos**: As rotas `/videos/{id}` e `/videos/{id}/events` permanecem abertas sem autenticação para permitir a incorporação de players e registro de telemetria por visitantes externos.
+- **Credenciais de Desenvolvimento**:
+  - **E-mail:** `admin@vturb.com`
+  - **Senha:** `Admin123456!`
 
 ---
 

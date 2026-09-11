@@ -120,10 +120,22 @@ describe('Seleção Múltipla e Exclusão em Massa de Vídeos', () => {
   })
 
   it('abre popup de confirmação centralizado no App que não fecha ao clicar fora', async () => {
+    localStorage.setItem('vturb_access_token', 'valid-token')
     // Mock das requisições de API
     vi.spyOn(global, 'fetch').mockImplementation((url: RequestInfo | URL, init?: RequestInit) => {
       const urlStr = url.toString()
-      if (urlStr.includes('/videos/') && (!init || init.method === 'GET')) {
+      if (urlStr.includes('/auth/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: 'admin-123',
+            email: 'admin@vturb.com',
+            is_super_admin: true,
+            created_at: new Date().toISOString(),
+          }),
+        } as Response)
+      }
+      if (urlStr.includes('/videos/') && (!init || !init.method || init.method.toUpperCase() === 'GET')) {
         return Promise.resolve({
           ok: true,
           json: async () => mockVideos,

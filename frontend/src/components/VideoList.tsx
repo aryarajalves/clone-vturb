@@ -27,27 +27,28 @@ export const VideoList: React.FC<VideoListProps> = ({
 }) => {
   const PAGE_SIZE = 20
   const [currentPage, setCurrentPage] = useState(1)
+  const safeVideos = Array.isArray(videos) ? videos : []
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   useEffect(() => {
-    const valid = new Set(videos.map((v) => v.id))
+    const valid = new Set(safeVideos.map((v) => v.id))
     setSelectedIds((prev) => prev.filter((id) => valid.has(id)))
-  }, [videos])
+  }, [safeVideos])
 
-  const totalPages = Math.max(1, Math.ceil(videos.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(safeVideos.length / PAGE_SIZE))
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
   const startIndex = (safeCurrentPage - 1) * PAGE_SIZE
-  const endIndex = Math.min(startIndex + PAGE_SIZE, videos.length)
-  const paginatedVideos = videos.slice(startIndex, endIndex)
+  const endIndex = Math.min(startIndex + PAGE_SIZE, safeVideos.length)
+  const paginatedVideos = safeVideos.slice(startIndex, endIndex)
 
-  const allSelected = videos.length > 0 && selectedIds.length === videos.length
-  const isIndeterminate = selectedIds.length > 0 && selectedIds.length < videos.length
+  const allSelected = safeVideos.length > 0 && selectedIds.length === safeVideos.length
+  const isIndeterminate = selectedIds.length > 0 && selectedIds.length < safeVideos.length
 
   const handleToggleSelectAll = () => {
     if (allSelected) {
       setSelectedIds([])
     } else {
-      setSelectedIds(videos.map((v) => v.id))
+      setSelectedIds(safeVideos.map((v) => v.id))
     }
   }
 
@@ -81,7 +82,7 @@ export const VideoList: React.FC<VideoListProps> = ({
     )
   }
 
-  if (videos.length === 0) {
+  if (safeVideos.length === 0) {
     return (
       <div
         data-testid="empty-videos-state"

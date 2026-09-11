@@ -14,6 +14,8 @@ from sqlalchemy import func
 
 from app.core.database import get_db
 from app.models.video import Video, VideoAnalytics
+from app.models.user import User
+from app.api.deps import get_current_user
 from app.services.storage import storage_service
 from app.schemas.video import (
     VideoCreate,
@@ -53,7 +55,8 @@ def get_single_plays_count(db: Session, video_id: str) -> int:
 def list_videos(
     skip: Optional[int] = Query(0, ge=0),
     limit: Optional[int] = Query(None, ge=1),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     query = db.query(Video).order_by(Video.created_at.desc())
     if skip:
@@ -79,7 +82,11 @@ def list_videos(
 
 
 @router.post("/", response_model=VideoResponse, status_code=status.HTTP_201_CREATED)
-def create_video(payload: VideoCreate, db: Session = Depends(get_db)):
+def create_video(
+    payload: VideoCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     video = Video(
         title=payload.title,
         video_url=payload.video_url,
@@ -103,7 +110,10 @@ def create_video(payload: VideoCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/upload")
-def upload_video_file(file: UploadFile = File(...)):
+def upload_video_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
     allowed_extensions = {
         # Vídeos
         ".mp4", ".webm", ".mov", ".m4v",
@@ -130,7 +140,11 @@ def upload_video_file(file: UploadFile = File(...)):
 
 
 @router.post("/bulk-delete", response_model=BulkDeleteResponse)
-def bulk_delete_videos(payload: BulkDeleteRequest, db: Session = Depends(get_db)):
+def bulk_delete_videos(
+    payload: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     if not payload.video_ids:
         return BulkDeleteResponse(deleted_count=0, deleted_ids=[])
 
@@ -157,7 +171,12 @@ def get_video(video_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{video_id}", response_model=VideoResponse)
-def update_video(video_id: str, payload: VideoUpdate, db: Session = Depends(get_db)):
+def update_video(
+    video_id: str,
+    payload: VideoUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
@@ -178,7 +197,11 @@ def update_video(video_id: str, payload: VideoUpdate, db: Session = Depends(get_
 
 
 @router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_video(video_id: str, db: Session = Depends(get_db)):
+def delete_video(
+    video_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
@@ -213,6 +236,7 @@ def get_video_metrics(
     start_date: Optional[str] = Query(None, description="YYYY-MM-DD ou ISO"),
     end_date: Optional[str] = Query(None, description="YYYY-MM-DD ou ISO"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:

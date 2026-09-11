@@ -4,8 +4,7 @@ trigger: always_on
 
 # Informações de Acesso ao Sistema (Desenvolvimento)
 
-Para realizar testes visuais, smoke tests e validações de interface, utilize as seguintes credenciais:
+- **E-mail:** `admin@vturb.com`
+- **Senha:** `Admin123456!`
 
-PS. Ainda não temos sistema de login para acesso.
-
-**Atenção:** Sempre que for validar o frontend, utilize esses dados para acessar o sistema e navegar até as páginas afetadas pelas alterações.
+**Atenção:** Sempre que for validar o frontend, utilize essas credenciais para autenticar no sistema e navegar até as páginas afetadas pelas alterações. Os endpoints privados exigem cabeçalho `Authorization: Bearer <token>`, enquanto a rota de incorporação (`/embed/:id`) e telemetria permanecem públicas.

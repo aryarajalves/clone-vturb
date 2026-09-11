@@ -1,7 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import type { Video } from './types/video'
-import { fetchVideos, deleteVideo, bulkDeleteVideos } from './services/api'
+import type { User } from './types/auth'
+import {
+  fetchVideos,
+  deleteVideo,
+  bulkDeleteVideos,
+  getAuthToken,
+  removeAuthToken,
+  getCurrentUserApi,
+} from './services/api'
 import { Topbar } from './components/Topbar'
 import { Sidebar } from './components/Sidebar'
 import { VideoList } from './components/VideoList'
@@ -9,6 +17,7 @@ import { DeleteConfirmModal } from './components/DeleteConfirmModal'
 import { EmbedPlayer } from './components/EmbedPlayer'
 import { VideoDetailView } from './components/video-detail/VideoDetailView'
 import { VideoCreateView } from './components/video-create/VideoCreateView'
+import { LoginView } from './components/auth/LoginView'
 import './App.css'
 
 function App() {
@@ -19,10 +28,13 @@ function App() {
       ? window.location.pathname.replace('/embed/', '')
       : null)
 
+  // O embed player é público e não requer autenticação
   if (embedId) {
     return <EmbedPlayer videoId={embedId} />
   }
 
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -44,7 +56,7 @@ function App() {
     setTimeout(() => setToastMessage(null), 3000)
   }
 
-  const loadVideos = async () => {
+  const loadVideos = useCallback(async () => {
     try {
       setLoading(true)
       const data = await fetchVideos()
@@ -54,11 +66,72 @@ function App() {
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  // Validação inicial do token JWT
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = getAuthToken()
+      if (!token) {
+        setIsCheckingAuth(false)
+        return
+      }
+
+      try {
+        const user = await getCurrentUserApi()
+        setCurrentUser(user)
+        await loadVideos()
+      } catch {
+        removeAuthToken()
+        setCurrentUser(null)
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+
+    checkAuth()
+  }, [loadVideos])
+
+  const handleLoginSuccess = async (user: User) => {
+    setCurrentUser(user)
+    showToast(`Bem-vindo, ${user.email}!`)
+    await loadVideos()
   }
 
-  useEffect(() => {
-    loadVideos()
-  }, [])
+  const handleLogout = () => {
+    removeAuthToken()
+    setCurrentUser(null)
+    setSelectedVideo(null)
+    setIsCreatingVideo(false)
+    setVideos([])
+    showToast('Sessão encerrada com sucesso.')
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div
+        data-testid="auth-loading-screen"
+        style={{
+          height: '100vh',
+          width: '100vw',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f8fafc',
+          color: '#64748b',
+          fontSize: '1rem',
+          fontWeight: 500,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}
+      >
+        <span>Carregando painel do VTurb...</span>
+      </div>
+    )
+  }
+
+  if (!currentUser) {
+    return <LoginView onLoginSuccess={handleLoginSuccess} />
+  }
 
   const handleDeleteConfirm = async () => {
     if (!videoToDelete) return
@@ -132,6 +205,8 @@ function App() {
       <Topbar
         onOpenImport={() => setIsCreatingVideo(true)}
         showCreateButton={!selectedVideo && !isCreatingVideo}
+        user={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Layout Principal */}

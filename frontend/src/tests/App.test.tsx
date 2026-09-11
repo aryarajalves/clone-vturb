@@ -3,23 +3,72 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import App from '../App'
 
 describe('App Dashboard VTurb Layout', () => {
+  const mockUser = {
+    id: 'admin-123',
+    email: 'admin@vturb.com',
+    is_super_admin: true,
+    created_at: new Date().toISOString(),
+  }
+
   beforeEach(() => {
-    global.fetch = vi.fn().mockImplementation(() =>
-      Promise.resolve({
+    localStorage.setItem('vturb_access_token', 'valid-test-token')
+    global.fetch = vi.fn().mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString()
+      if (urlStr.includes('/auth/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockUser),
+        })
+      }
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve([]),
       })
-    )
+    })
   })
 
-  it('renderiza a Topbar com o logotipo VTurb e exclusivamente o botão Novo Vídeo', async () => {
+  it('renderiza a tela de login quando o usuário não está autenticado', async () => {
+    localStorage.removeItem('vturb_access_token')
+
     await act(async () => {
       render(<App />)
     })
 
-    expect(screen.getByTestId('topbar')).toBeInTheDocument()
-    expect(screen.getByTestId('vturb-logo-text')).toHaveTextContent('Clone do VTurb')
-    expect(screen.getByTestId('btn-novo-video')).toHaveTextContent('Novo Vídeo')
+    expect(screen.getByTestId('login-view-container')).toBeInTheDocument()
+    expect(screen.getByTestId('login-heading')).toHaveTextContent('Bem-vindo de volta')
+  })
+
+  it('permite realizar logout e retornar para a tela de login', async () => {
+    await act(async () => {
+      render(<App />)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-email-display')).toHaveTextContent('admin@vturb.com')
+    })
+
+    const logoutBtn = screen.getByTestId('btn-logout')
+    await act(async () => {
+      fireEvent.click(logoutBtn)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('login-view-container')).toBeInTheDocument()
+    })
+  })
+
+  it('renderiza a Topbar com o logotipo VTurb, botão Novo Vídeo e perfil do usuário', async () => {
+    await act(async () => {
+      render(<App />)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar')).toBeInTheDocument()
+      expect(screen.getByTestId('vturb-logo-text')).toHaveTextContent('Clone do VTurb')
+      expect(screen.getByTestId('btn-novo-video')).toHaveTextContent('Novo Vídeo')
+      expect(screen.getByTestId('user-email-display')).toHaveTextContent('admin@vturb.com')
+      expect(screen.getByTestId('user-superadmin-badge')).toHaveTextContent(/admin/i)
+    })
     expect(screen.queryByText('Premiações')).not.toBeInTheDocument()
     expect(screen.queryByTestId('plays-counter-badge')).not.toBeInTheDocument()
   })
