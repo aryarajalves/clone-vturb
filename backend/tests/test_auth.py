@@ -102,3 +102,34 @@ def test_routes_protection_with_jwt():
     auth_res = client.get("/videos/", headers={"Authorization": f"Bearer {token}"})
     assert auth_res.status_code == 200
     assert isinstance(auth_res.json(), list)
+
+def test_jwt_expiration_after_24_hours():
+    from datetime import timedelta
+
+    # 1. Valida que a expiração padrão configurada e gerada é exatamente 24 horas (1440 minutos / 86400s)
+    payload = {
+        "sub": "user-uuid-exp-test",
+        "email": settings.SUPER_ADMIN_EMAIL,
+        "is_super_admin": True
+    }
+    token = create_access_token(data=payload)
+    decoded = decode_access_token(token)
+    assert decoded is not None
+    time_diff = decoded["exp"] - decoded["iat"]
+    assert time_diff == 24 * 60 * 60
+
+    # 2. Token expirado (simulando requisição após transcorridas 24 horas)
+    expired_token = create_access_token(data=payload, expires_delta=timedelta(seconds=-10))
+
+    # decode_access_token deve retornar None para token vencido
+    assert decode_access_token(expired_token) is None
+
+    # Endpoint protegido /auth/me deve rejeitar com 401 e mensagem de expirado
+    expired_me_res = client.get("/auth/me", headers={"Authorization": f"Bearer {expired_token}"})
+    assert expired_me_res.status_code == 401
+    assert "Token inválido ou expirado" in expired_me_res.json()["detail"]
+
+    # Endpoint protegido /videos/ deve rejeitar com 401 e mensagem de expirado
+    expired_videos_res = client.get("/videos/", headers={"Authorization": f"Bearer {expired_token}"})
+    assert expired_videos_res.status_code == 401
+    assert "Token inválido ou expirado" in expired_videos_res.json()["detail"]

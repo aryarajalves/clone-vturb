@@ -22,6 +22,15 @@ export function authHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` }
 }
 
+function handleAuthResponse(res: Response): void {
+  if (res.status === 401) {
+    removeAuthToken()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:session_expired'))
+    }
+  }
+}
+
 export async function loginApi(credentials: { email: string; password: string }): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
@@ -43,6 +52,7 @@ export async function getCurrentUserApi(): Promise<User> {
       ...authHeaders(),
     },
   })
+  handleAuthResponse(res)
   if (!res.ok) {
     throw new Error('Sessão expirada ou não autenticado.')
   }
@@ -55,6 +65,7 @@ export async function fetchVideos(): Promise<Video[]> {
       ...authHeaders(),
     },
   })
+  handleAuthResponse(res)
   if (!res.ok) throw new Error('Falha ao carregar lista de vídeos.')
   return res.json()
 }
@@ -80,6 +91,7 @@ export async function createVideo(data: {
     },
     body: JSON.stringify(data),
   })
+  handleAuthResponse(res)
   if (!res.ok) throw new Error('Falha ao criar o vídeo.')
   return res.json()
 }
@@ -101,6 +113,7 @@ export async function updateVideo(
     },
     body: JSON.stringify(data),
   })
+  handleAuthResponse(res)
   if (!res.ok) throw new Error('Falha ao atualizar o vídeo.')
   return res.json()
 }
@@ -112,6 +125,7 @@ export async function deleteVideo(id: string): Promise<void> {
       ...authHeaders(),
     },
   })
+  handleAuthResponse(res)
   if (!res.ok) throw new Error('Falha ao excluir o vídeo.')
 }
 
@@ -124,6 +138,7 @@ export async function bulkDeleteVideos(ids: string[]): Promise<{ deleted_count: 
     },
     body: JSON.stringify({ video_ids: ids }),
   })
+  handleAuthResponse(res)
   if (!res.ok) throw new Error('Falha ao excluir os vídeos selecionados.')
   return res.json()
 }
@@ -147,6 +162,7 @@ export async function fetchVideoMetrics(
       ...authHeaders(),
     },
   })
+  handleAuthResponse(res)
   if (!res.ok) throw new Error('Falha ao obter métricas do vídeo.')
   return res.json()
 }
@@ -182,6 +198,7 @@ export async function uploadFile(file: File): Promise<{ filename: string; url: s
     },
     body: formData,
   })
+  handleAuthResponse(res)
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}))

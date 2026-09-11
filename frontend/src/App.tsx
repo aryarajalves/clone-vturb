@@ -92,6 +92,22 @@ function App() {
     checkAuth()
   }, [loadVideos])
 
+  // Escuta evento de expiração de sessão (401 após 24 horas)
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setCurrentUser(null)
+      setSelectedVideo(null)
+      setIsCreatingVideo(false)
+      setVideos([])
+      showToast('Sua sessão expirou (limite de 24 horas). Por favor, faça login novamente.')
+    }
+
+    window.addEventListener('auth:session_expired', handleSessionExpired)
+    return () => {
+      window.removeEventListener('auth:session_expired', handleSessionExpired)
+    }
+  }, [])
+
   const handleLoginSuccess = async (user: User) => {
     setCurrentUser(user)
     showToast(`Bem-vindo, ${user.email}!`)
@@ -130,7 +146,35 @@ function App() {
   }
 
   if (!currentUser) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} />
+    return (
+      <>
+        {toastMessage && (
+          <div
+            data-testid="toast-notification"
+            style={{
+              position: 'fixed',
+              bottom: '24px',
+              right: '24px',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              color: '#fff',
+              padding: '0.85rem 1.4rem',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+              zIndex: 10000,
+              fontSize: '0.9rem',
+              fontWeight: 500,
+            }}
+          >
+            <CheckCircle2 size={18} />
+            {toastMessage}
+          </div>
+        )}
+        <LoginView onLoginSuccess={handleLoginSuccess} />
+      </>
+    )
   }
 
   const handleDeleteConfirm = async () => {

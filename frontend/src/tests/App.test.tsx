@@ -57,6 +57,26 @@ describe('App Dashboard VTurb Layout', () => {
     })
   })
 
+  it('desloga o usuário e exibe tela de login quando a sessão expira (401 após 24h)', async () => {
+    await act(async () => {
+      render(<App />)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar')).toBeInTheDocument()
+    })
+
+    // Dispara evento global de expiração de sessão emitido pelo api.ts ao receber 401
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('auth:session_expired'))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('login-view-container')).toBeInTheDocument()
+      expect(screen.getByTestId('toast-notification')).toHaveTextContent(/sessão expirou/i)
+    })
+  })
+
   it('renderiza a Topbar com o logotipo VTurb, botão Novo Vídeo e perfil do usuário', async () => {
     await act(async () => {
       render(<App />)
