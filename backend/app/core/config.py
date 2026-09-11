@@ -31,7 +31,9 @@ class Settings:
 
     # Autenticação JWT
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "sua-chave-secreta-super-segura-vturb-jwt-2026")
-    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_HOURS: int = int(
+        os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", "24h").lower().replace("h", "").strip()
+    )
 
 settings = Settings()

@@ -35,6 +35,7 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
 - **Conta Super Admin Automática**: Credenciais configuradas no `.env` (`SUPER_ADMIN_EMAIL` e `SUPER_ADMIN_PASSWORD`), sincronizadas automaticamente no banco de dados na inicialização do backend.
 - **Criptografia Memory-Hard (Argon2id)**: Senhas criptografadas com `argon2-cffi` utilizando 64MB de memória RAM por cálculo (`memory_cost=65536`), 3 iterações e 4 threads, inviabilizando ataques de força bruta com GPU/ASIC.
 - **Proteção de Rotas com Tokens JWT**: Todas as rotas administrativas exigem cabeçalho `Authorization: Bearer <token>`.
+- **Expiração Automática de Sessão (24h) e Logout Reativo**: Tokens JWT possuem tempo de vida configurável em horas (`JWT_ACCESS_TOKEN_EXPIRE_HOURS=24h`). Ao expirar, a aplicação detecta o vencimento, encerra a sessão de forma segura e redireciona para o login com toast informativo.
 - **Embeds e Telemetria Públicos**: As rotas `/videos/{id}` e `/videos/{id}/events` permanecem abertas sem autenticação para permitir a incorporação de players e registro de telemetria por visitantes externos.
 - **Credenciais de Desenvolvimento**:
   - **E-mail:** `admin@vturb.com`
