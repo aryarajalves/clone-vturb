@@ -104,12 +104,15 @@ class BackupManager:
             if schedule:
                 schedule.last_backup_at = now
                 schedule.updated_at = now
-                if schedule.frequency == "hours":
-                    schedule.next_backup_at = now + timedelta(hours=schedule.interval_value)
-                elif schedule.frequency == "days":
-                    schedule.next_backup_at = now + timedelta(days=schedule.interval_value)
-                elif schedule.frequency == "weekly":
-                    schedule.next_backup_at = now + timedelta(weeks=schedule.interval_value)
+                if schedule.is_active:
+                    if schedule.frequency == "hours":
+                        schedule.next_backup_at = now + timedelta(hours=schedule.interval_value)
+                    elif schedule.frequency == "days":
+                        schedule.next_backup_at = now + timedelta(days=schedule.interval_value)
+                    elif schedule.frequency == "weekly":
+                        schedule.next_backup_at = now + timedelta(weeks=schedule.interval_value)
+                else:
+                    schedule.next_backup_at = None
 
             db.commit()
             db.refresh(record)

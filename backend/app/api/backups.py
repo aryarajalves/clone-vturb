@@ -3,6 +3,7 @@ import tempfile
 import logging
 from typing import List
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -26,6 +27,27 @@ logger = logging.getLogger("projetovturb")
 
 router = APIRouter()
 
+def calculate_next_backup_time(schedule: BackupSchedule, now: datetime = None) -> datetime:
+    """Calcula o próximo horário de backup com base na frequência e intervalo configurados."""
+    if not now:
+        now = datetime.now(timezone.utc)
+    base_time = schedule.last_backup_at or now
+
+    if schedule.frequency == "hours":
+        delta = timedelta(hours=schedule.interval_value)
+    elif schedule.frequency == "days":
+        delta = timedelta(days=schedule.interval_value)
+    elif schedule.frequency == "weekly":
+        delta = timedelta(weeks=schedule.interval_value)
+    else:
+        delta = timedelta(hours=6)
+
+    next_time = base_time + delta
+    # Se o horário calculado já passou em relação ao momento atual, agenda a partir de agora
+    if next_time <= now:
+        next_time = now + delta
+    return next_time
+
 @router.get("/", response_model=List[BackupRecordResponse])
 def list_backups(
     db: Session = Depends(get_db),
@@ -43,9 +65,17 @@ def get_backup_metrics(
     last_backup = db.query(BackupRecord).order_by(BackupRecord.created_at.desc()).first()
     total_count = db.query(BackupRecord).count()
 
+    now = datetime.now(timezone.utc)
     schedule = db.query(BackupSchedule).first()
     retention = schedule.retention_limit if schedule else 30
-    next_at = schedule.next_backup_at if schedule else None
+    next_at = None
+
+    if schedule and schedule.is_active:
+        if not schedule.next_backup_at or schedule.next_backup_at <= now:
+            schedule.next_backup_at = calculate_next_backup_time(schedule, now)
+            db.commit()
+            db.refresh(schedule)
+        next_at = schedule.next_backup_at
 
     freq_text = "A cada 6 hora(s)"
     if schedule:
@@ -111,15 +141,22 @@ def update_backup_schedule(
         schedule = BackupSchedule(id=1)
         db.add(schedule)
 
+    now = datetime.now(timezone.utc)
     schedule.is_active = payload.is_active
     schedule.frequency = payload.frequency
     schedule.interval_value = payload.interval_value
     schedule.s3_folder = payload.s3_folder.strip()
     schedule.retention_limit = payload.retention_limit
+    schedule.updated_at = now
+
+    if schedule.is_active:
+        schedule.next_backup_at = calculate_next_backup_time(schedule, now)
+    else:
+        schedule.next_backup_at = None
 
     db.commit()
     db.refresh(schedule)
-    logger.info("Configuração de agendamento de backup atualizada com sucesso.")
+    logger.info(f"Configuração de agendamento de backup atualizada com sucesso. Próximo backup: {schedule.next_backup_at}")
     return schedule
 
 @router.get("/{backup_id}/download")
