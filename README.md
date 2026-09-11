@@ -55,6 +55,23 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
   - Política de **Senha Forte de 12+ caracteres** com checklist visual dinâmico (mínimo 12 caracteres, maiúscula, minúscula, número, caractere especial e confirmação idêntica).
   - Criptografia com Argon2id ao persistir no banco de dados.
 
+### 💾 Backup Automático no S3 (Backblaze B2)
+- **Acesso Restrito ao Super Admin**: O botão "Backup Automático" fica posicionado **logo acima** de "Gestão de Usuário" na barra lateral e é exibido estritamente para o Super Admin oficial (`is_super_admin: true`).
+- **Identidade Estética Alinhada ao VTurb**: Interface com tema claro premium (`#f8fafc` / `#ffffff`), cartões com cantos arredondados, sombras sutis e acentos em azul `#0284c7`.
+- **Cards de Métricas Superiores**: Exibição em tempo real do **Último Backup** (data/hora formatada e nome do arquivo), **Próximo Backup** (horário previsto e frequência configurada) e **Retenção no S3 / B2** (quantidade de backups atuais vs limite configurado e espaço em disco consumido).
+- **Três Abas Especializadas**:
+  1. **Backups no S3**:
+     - Card de execução imediata com botão **"Fazer Backup Agora"** que gera dump compactado em `.dump.gz` e envia para o bucket B2.
+     - Tabela completa de snapshots com seleção múltipla, paginação em até 20 itens, download direto do arquivo, restauração do banco com modal de confirmação e exclusão individual/em lote com modal centralizado.
+  2. **Agendamento Automático**:
+     - Toggle de ativação/pausa da rotina periódica.
+     - Frequência de execução configurável (1h, 3h, 6h, 12h, 24h, 48h, 7 dias).
+     - Pasta de destino dentro do bucket S3 (`vturb/backups/`).
+     - Limite de retenção máxima de backups para purga automática dos dumps mais antigos.
+  3. **Importar Backup Externo**:
+     - Área interativa de drag & drop para upload de arquivos `.dump`, `.dump.gz`, `.sql` e `.tar` externos diretamente para o Backblaze B2.
+- **Persistência Completa de Navegação (F5)**: Ao recarregar a página (F5), a aplicação restaura exatamente a última tela e subaba acessada pelo usuário através de sincronização com `localStorage`.
+
 ---
 
 ## 📁 Estrutura de Pastas

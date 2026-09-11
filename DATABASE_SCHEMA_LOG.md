@@ -4,6 +4,26 @@ Registro histórico de alterações de tabelas, colunas e índices do banco de d
 
 ---
 
+## 2026-09-11 - Criação das tabelas backup_records e backup_schedules (Backblaze S3)
+- **Tabelas afetadas:** `backup_records`, `backup_schedules`
+- **Estruturas:**
+  - `backup_records`: `id`, `filename`, `size_bytes`, `status`, `storage_path`, `is_external`, `created_at`
+  - `backup_schedules`: `id`, `is_active`, `frequency`, `interval_value`, `s3_folder`, `retention_limit`, `last_backup_at`, `next_backup_at`, `updated_at`
+- **Motivo:** Sistema de Backup Automático e Manual do banco PostgreSQL com envio para o Backblaze B2 (S3) e retenção configurável.
+- **Script de migração:** `backend/scripts/add_backup_tables.py`
+- **Comando de execução:** `docker exec backend python scripts/add_backup_tables.py`
+
+---
+
+## 2026-09-11 - Criação da tabela email_verification_codes (Validação Brevo)
+- **Tabela afetada:** `email_verification_codes`
+- **Estrutura:** `id`, `email`, `token`, `code`, `expires_at`, `is_verified`, `created_at`
+- **Motivo:** Validação de contas por código de 6 dígitos enviado via e-mail (Brevo).
+- **Script de migração:** `backend/scripts/add_verification_codes_table.py`
+- **Comando de execução:** `docker exec backend python scripts/add_verification_codes_table.py`
+
+---
+
 ## 2026-09-11 - Adição da coluna 'name' na tabela 'users'
 - **Tabela afetada:** `users`
 - **Nova coluna:** `name VARCHAR(255) NULL`

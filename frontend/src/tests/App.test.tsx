@@ -52,6 +52,12 @@ describe('App Dashboard VTurb Layout', () => {
       fireEvent.click(logoutBtn)
     })
 
+    // Confirmação no modal de logout
+    const confirmLogoutBtn = screen.getByTestId('logout-modal-confirm')
+    await act(async () => {
+      fireEvent.click(confirmLogoutBtn)
+    })
+
     await waitFor(() => {
       expect(screen.getByTestId('login-view-container')).toBeInTheDocument()
     })

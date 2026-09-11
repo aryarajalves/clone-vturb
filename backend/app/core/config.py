@@ -36,4 +36,9 @@ class Settings:
         os.getenv("JWT_ACCESS_TOKEN_EXPIRE_HOURS", "24h").lower().replace("h", "").strip()
     )
 
+    # Integração Brevo (Envio de E-mails com Código de Validação)
+    BREVO_API_KEY: str = os.getenv("BREVO_API_KEY", "")
+    BREVO_SENDER_EMAIL: str = os.getenv("BREVO_SENDER_EMAIL", "noreply@vturb.com")
+    BREVO_SENDER_NAME: str = os.getenv("BREVO_SENDER_NAME", "Clone do VTurb")
+
 settings = Settings()

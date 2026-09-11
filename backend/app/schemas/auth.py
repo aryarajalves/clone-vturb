@@ -44,5 +44,22 @@ class RegisterInviteRequest(BaseModel):
     token: str
     email: str
     password: str
+    code: str
     name: Optional[str] = None
+
+class SendVerificationCodeRequest(BaseModel):
+    token: str
+    email: str
+    name: Optional[str] = None
+
+class SendVerificationCodeResponse(BaseModel):
+    success: bool
+    message: str
+
+class BulkDeleteRequest(BaseModel):
+    ids: list[str]
+
+class BulkDeleteResponse(BaseModel):
+    deleted_count: int
+    deleted_ids: list[str]
 

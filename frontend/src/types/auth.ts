@@ -41,5 +41,22 @@ export interface RegisterInvitePayload {
   token: string
   email: string
   password: string
+  code: string
+  name?: string
+}
+
+export interface SendVerificationCodePayload {
+  token: string
+  email: string
+  name?: string
+}
+
+export interface BulkDeletePayload {
+  ids: string[]
+}
+
+export interface BulkDeleteResponse {
+  deleted_count: number
+  deleted_ids: string[]
 }
 

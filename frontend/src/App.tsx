@@ -20,6 +20,7 @@ import { VideoCreateView } from './components/video-create/VideoCreateView'
 import { LoginView } from './components/auth/LoginView'
 import { UserManagementView } from './components/users/UserManagementView'
 import { AcceptInviteView } from './components/auth/AcceptInviteView'
+import { BackupManagementView } from './components/backup/BackupManagementView'
 import './App.css'
 
 function App() {
@@ -41,8 +42,16 @@ function App() {
       ? window.location.pathname.replace('/invite/', '')
       : null)
 
+  type MainTab = 'videos' | 'users' | 'backups'
+
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [currentTab, setCurrentTab] = useState<'videos' | 'users'>('videos')
+  const [currentTab, setCurrentTab] = useState<MainTab>(() => {
+    const saved = localStorage.getItem('vturb_current_tab')
+    if (saved === 'videos' || saved === 'users' || saved === 'backups') {
+      return saved as MainTab
+    }
+    return 'videos'
+  })
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
@@ -136,8 +145,17 @@ function App() {
     await loadVideos()
   }
 
+  // Sanitiza a aba caso o usuário logado não possua permissão de super admin
+  useEffect(() => {
+    if (currentUser && !currentUser.is_super_admin && (currentTab === 'users' || currentTab === 'backups')) {
+      setCurrentTab('videos')
+      localStorage.setItem('vturb_current_tab', 'videos')
+    }
+  }, [currentUser, currentTab])
+
   const handleLogout = () => {
     removeAuthToken()
+    localStorage.removeItem('vturb_current_tab')
     setCurrentUser(null)
     setSelectedVideo(null)
     setIsCreatingVideo(false)
@@ -277,24 +295,25 @@ function App() {
 
       {/* Layout Principal */}
       <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
-        {/* Barra Lateral Global (Meus vídeos e Gestão de Usuário) - Oculta durante a edição ou criação */}
+        {/* Barra Lateral Global (Meus vídeos, Backup Automático e Gestão de Usuário) - Oculta durante a edição ou criação */}
         {!selectedVideo && !isCreatingVideo && (
           <Sidebar
             currentTab={currentTab}
             user={currentUser}
             onSelectTab={(tab) => {
-              // Garante que apenas SuperAdmin possa alternar para a aba users
-              if (tab === 'users' && !currentUser?.is_super_admin) {
+              // Garante que apenas SuperAdmin possa alternar para as abas restritas
+              if ((tab === 'users' || tab === 'backups') && !currentUser?.is_super_admin) {
                 return
               }
               setCurrentTab(tab)
+              localStorage.setItem('vturb_current_tab', tab)
               setSelectedVideo(null)
               setIsCreatingVideo(false)
             }}
           />
         )}
 
-        {/* Alternância entre Tela de Lista, Painel de Criação, Gerenciamento de Vídeo ou Gestão de Usuários */}
+        {/* Alternância entre Tela de Lista, Painel de Criação, Gerenciamento de Vídeo, Gestão de Usuários ou Backup */}
         {selectedVideo ? (
           <VideoDetailView
             video={selectedVideo}
@@ -318,6 +337,8 @@ function App() {
           />
         ) : currentTab === 'users' && currentUser?.is_super_admin ? (
           <UserManagementView currentUser={currentUser} showToast={showToast} />
+        ) : currentTab === 'backups' && currentUser?.is_super_admin ? (
+          <BackupManagementView showToast={showToast} />
         ) : (
           <main style={{ flex: 1, padding: '2rem 3rem', width: '100%', minWidth: 0, boxSizing: 'border-box', height: '100%', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

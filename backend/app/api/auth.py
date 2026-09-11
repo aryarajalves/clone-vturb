@@ -1,6 +1,7 @@
 import re
+import secrets
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -8,15 +9,18 @@ from sqlalchemy import func
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, hash_password, create_access_token
-from app.models.user import User, UserInvite
+from app.models.user import User, UserInvite, EmailVerificationCode
 from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
     UserResponse,
     InviteValidateResponse,
     RegisterInviteRequest,
+    SendVerificationCodeRequest,
+    SendVerificationCodeResponse,
 )
 from app.api.deps import get_current_user
+from app.services.brevo import send_verification_code_email
 
 logger = logging.getLogger("projetovturb.auth")
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
@@ -147,9 +151,9 @@ def validate_invite(token: str, db: Session = Depends(get_db)):
         expires_at=invite.expires_at
     )
 
-@router.post("/register-invite", response_model=TokenResponse)
-def register_via_invite(payload: RegisterInviteRequest, db: Session = Depends(get_db)):
-    """Cadastra um novo usuário via link de convite com validação rigorosa de senha forte."""
+@router.post("/send-verification-code", response_model=SendVerificationCodeResponse)
+def send_verification_code(payload: SendVerificationCodeRequest, db: Session = Depends(get_db)):
+    """Gera e envia código de 6 dígitos para o e-mail via Brevo para ativação de conta."""
     token_clean = payload.token.strip()
     invite = db.query(UserInvite).filter(UserInvite.token == token_clean).first()
     if not invite:
@@ -178,16 +182,109 @@ def register_via_invite(payload: RegisterInviteRequest, db: Session = Depends(ge
             detail="Informe um endereço de e-mail válido."
         )
 
+    # Requisito 6: Bloqueia criação com e-mail já existente
+    existing = db.query(User).filter(func.lower(User.email) == email_clean).first()
+    if existing:
+        logger.warning(f"Tentativa de cadastro com e-mail já em uso: {email_clean}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este e-mail já está cadastrado no sistema. Por favor, utilize outro e-mail ou faça login."
+        )
+
+    # Gera código aleatório de 6 dígitos numéricos
+    code = "".join(secrets.choice("0123456789") for _ in range(6))
+    expires_at = now_utc + timedelta(minutes=15)
+
+    verification_entry = EmailVerificationCode(
+        email=email_clean,
+        token=token_clean,
+        code=code,
+        expires_at=expires_at,
+        is_verified=False,
+    )
+    db.add(verification_entry)
+    db.commit()
+
+    # Dispara e-mail via serviço Brevo
+    send_verification_code_email(email_clean, code, payload.name)
+
+    return SendVerificationCodeResponse(
+        success=True,
+        message=f"Código de verificação enviado para {email_clean}."
+    )
+
+@router.post("/register-invite", response_model=TokenResponse)
+def register_via_invite(payload: RegisterInviteRequest, db: Session = Depends(get_db)):
+    """Cadastra um novo usuário via link de convite com validação rigorosa de código Brevo e senha forte."""
+    token_clean = payload.token.strip()
+    invite = db.query(UserInvite).filter(UserInvite.token == token_clean).first()
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Link de convite inválido ou inexistente."
+        )
+
+    if invite.is_used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este link de convite já foi utilizado."
+        )
+
+    now_utc = datetime.now(timezone.utc)
+    if invite.expires_at < now_utc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este link de convite expirou."
+        )
+
+    email_clean = payload.email.strip().lower()
+    if not email_clean or "@" not in email_clean:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Informe um endereço de e-mail válido."
+        )
+
+    # Requisito 6: Bloqueia criação com e-mail já existente
+    existing = db.query(User).filter(func.lower(User.email) == email_clean).first()
+    if existing:
+        logger.warning(f"Tentativa de cadastro com e-mail duplicado: {email_clean}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este e-mail já está cadastrado no sistema. Por favor, utilize outro e-mail ou faça login."
+        )
+
     # Validação estrita da senha forte
     validate_strong_password(payload.password)
 
-    # Verifica duplicidade de e-mail
-    existing = db.query(User).filter(func.lower(User.email) == email_clean).first()
-    if existing:
+    # Requisito 5: Validação do código de 6 dígitos enviado por e-mail
+    code_clean = payload.code.strip()
+    if not code_clean:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Já existe uma conta cadastrada com este e-mail."
+            detail="Informe o código de verificação de 6 dígitos recebido por e-mail."
         )
+
+    code_entry = db.query(EmailVerificationCode).filter(
+        EmailVerificationCode.email == email_clean,
+        EmailVerificationCode.token == token_clean,
+        EmailVerificationCode.code == code_clean,
+        EmailVerificationCode.is_verified == False
+    ).order_by(EmailVerificationCode.created_at.desc()).first()
+
+    if not code_entry:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Código de verificação incorreto ou inválido."
+        )
+
+    if code_entry.expires_at < now_utc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O código de verificação expirou. Por favor, solicite um novo código."
+        )
+
+    # Marca código como verificado
+    code_entry.is_verified = True
 
     # Cria o usuário com o perfil do convite
     assigned_role = invite.role.lower()
@@ -211,7 +308,7 @@ def register_via_invite(payload: RegisterInviteRequest, db: Session = Depends(ge
     db.commit()
     db.refresh(new_user)
 
-    logger.info(f"Usuário criado via convite: {email_clean} com função '{assigned_role}'")
+    logger.info(f"Usuário criado via convite validado por código: {email_clean} com função '{assigned_role}'")
 
     access_token = create_access_token(data={
         "sub": new_user.id,
@@ -225,4 +322,5 @@ def register_via_invite(payload: RegisterInviteRequest, db: Session = Depends(ge
         token_type="bearer",
         user=UserResponse.model_validate(new_user)
     )
+
 

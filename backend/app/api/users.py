@@ -13,6 +13,8 @@ from app.schemas.auth import (
     UserResponse,
     CreateInviteRequest,
     InviteResponse,
+    BulkDeleteRequest,
+    BulkDeleteResponse,
 )
 
 logger = logging.getLogger("projetovturb.users")
@@ -158,4 +160,50 @@ def delete_invite(
     db.commit()
     logger.info(f"Convite {invite_id} excluído com sucesso por {current_user.email}")
     return {"detail": "Convite excluído com sucesso."}
+
+@router.post("/bulk-delete", response_model=BulkDeleteResponse)
+def bulk_delete_users(
+    payload: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin)
+):
+    """Exclui múltiplos usuários de uma só vez, protegendo o SuperAdmin e o usuário logado."""
+    if not payload.ids:
+        return BulkDeleteResponse(deleted_count=0, deleted_ids=[])
+
+    official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+    users_to_delete = db.query(User).filter(User.id.in_(payload.ids)).all()
+    deleted_ids = []
+
+    for u in users_to_delete:
+        if u.is_super_admin or u.role == "super_admin" or u.email.strip().lower() == official_email:
+            continue
+        if u.id == current_user.id:
+            continue
+        deleted_ids.append(u.id)
+        db.delete(u)
+
+    db.commit()
+    logger.info(f"{len(deleted_ids)} usuários excluídos em massa por {current_user.email}")
+    return BulkDeleteResponse(deleted_count=len(deleted_ids), deleted_ids=deleted_ids)
+
+@router.post("/invites/bulk-delete", response_model=BulkDeleteResponse)
+def bulk_delete_invites(
+    payload: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin)
+):
+    """Exclui múltiplos convites de uma só vez."""
+    if not payload.ids:
+        return BulkDeleteResponse(deleted_count=0, deleted_ids=[])
+
+    invites_to_delete = db.query(UserInvite).filter(UserInvite.id.in_(payload.ids)).all()
+    deleted_ids = [inv.id for inv in invites_to_delete]
+
+    for inv in invites_to_delete:
+        db.delete(inv)
+
+    db.commit()
+    logger.info(f"{len(deleted_ids)} convites excluídos em massa por {current_user.email}")
+    return BulkDeleteResponse(deleted_count=len(deleted_ids), deleted_ids=deleted_ids)
 

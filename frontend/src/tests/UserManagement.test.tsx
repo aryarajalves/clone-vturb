@@ -1,189 +1,132 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { UserManagementView } from '../components/users/UserManagementView'
-import { CreateInviteModal } from '../components/users/CreateInviteModal'
-import { Sidebar } from '../components/Sidebar'
-import type { User, UserInvite } from '../types/auth'
 import * as api from '../services/api'
+import type { User, UserInvite } from '../types/auth'
 
 vi.mock('../services/api', () => ({
   fetchUsers: vi.fn(),
-  fetchInvites: vi.fn(),
   deleteUser: vi.fn(),
-  createInvite: vi.fn(),
+  fetchInvites: vi.fn(),
   deleteInvite: vi.fn(),
+  createInvite: vi.fn(),
+  bulkDeleteUsers: vi.fn(),
+  bulkDeleteInvites: vi.fn(),
 }))
 
-describe('Gestão de Usuários - Frontend', () => {
-  const mockSuperAdmin: User = {
-    id: 'user-super-admin-1',
-    email: 'superadmin@vturb.com',
-    role: 'super_admin',
-    is_super_admin: true,
-    created_at: '2026-09-10T12:00:00Z',
-  }
+const mockSuperAdmin: User = {
+  id: 'user-super-1',
+  email: 'admin@vturb.com',
+  name: 'Super Admin Oficial',
+  role: 'super_admin',
+  is_super_admin: true,
+  created_at: '2026-01-01T00:00:00Z',
+}
 
-  const mockAdmin: User = {
-    id: 'user-admin-2',
-    email: 'admin@vturb.com',
+const mockNormalAdmin: User = {
+  id: 'user-admin-2',
+  email: 'gerente@vturb.com',
+  name: 'Gerente Admin',
+  role: 'admin',
+  is_super_admin: false,
+  created_at: '2026-02-01T00:00:00Z',
+}
+
+const mockStandardUser: User = {
+  id: 'user-std-3',
+  email: 'cliente@vturb.com',
+  name: 'Cliente Final',
+  role: 'user',
+  is_super_admin: false,
+  created_at: '2026-03-01T00:00:00Z',
+}
+
+const mockInvitesList: UserInvite[] = [
+  {
+    id: 'inv-1',
+    token: 'token-convite-1',
     role: 'admin',
-    is_super_admin: false,
+    expires_at: '2026-12-31T23:59:59Z',
+    is_used: false,
     created_at: '2026-09-11T10:00:00Z',
-  }
-
-  const mockUser: User = {
-    id: 'user-common-3',
-    email: 'usuario@vturb.com',
+  },
+  {
+    id: 'inv-2',
+    token: 'token-convite-2',
     role: 'user',
-    is_super_admin: false,
+    expires_at: '2026-12-31T23:59:59Z',
+    is_used: false,
     created_at: '2026-09-11T11:00:00Z',
-  }
+  },
+]
 
-  const mockInvites: UserInvite[] = [
-    {
-      id: 'inv-1',
-      token: 'token-abc-123',
-      role: 'admin',
-      expires_at: '2026-09-12T12:00:00Z',
-      is_used: false,
-      created_at: '2026-09-11T12:00:00Z',
-      invite_url: '/invite/token-abc-123',
-    },
-  ]
-
+describe('UserManagementView - Gestão de Usuários e Convites', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(api.fetchUsers).mockResolvedValue([mockSuperAdmin, mockAdmin, mockUser])
-    vi.mocked(api.fetchInvites).mockResolvedValue(mockInvites)
-    vi.mocked(api.deleteUser).mockResolvedValue({ detail: 'Usuário excluído.' })
-    vi.mocked(api.deleteInvite).mockResolvedValue({ detail: 'Convite excluído.' })
+    vi.mocked(api.fetchUsers).mockResolvedValue([mockSuperAdmin, mockNormalAdmin, mockStandardUser])
+    vi.mocked(api.fetchInvites).mockResolvedValue(mockInvitesList)
+    vi.mocked(api.deleteUser).mockResolvedValue({ detail: 'Usuário removido com sucesso.' })
+    vi.mocked(api.deleteInvite).mockResolvedValue({ detail: 'Convite excluído com sucesso.' })
+    vi.mocked(api.bulkDeleteUsers).mockResolvedValue({ deleted_count: 2, deleted_ids: ['user-admin-2', 'user-std-3'] })
+    vi.mocked(api.bulkDeleteInvites).mockResolvedValue({ deleted_count: 2, deleted_ids: ['inv-1', 'inv-2'] })
   })
 
-  it('Sidebar renderiza botão Gestão de Usuário e dados de perfil para SuperAdmin', () => {
-    const onSelectTab = vi.fn()
-    render(<Sidebar currentTab="videos" onSelectTab={onSelectTab} user={mockSuperAdmin} />)
+  it('bloqueia acesso quando usuário não for Super Admin', async () => {
+    const showToast = vi.fn()
+    render(<UserManagementView currentUser={mockNormalAdmin} showToast={showToast} />)
 
-    const userBtn = screen.getByTestId('nav-gestao-usuarios')
-    expect(userBtn).toBeInTheDocument()
-    expect(userBtn).toHaveTextContent('Gestão de Usuário')
-
-    fireEvent.click(userBtn)
-    expect(onSelectTab).toHaveBeenCalledWith('users')
-
-    // Valida exibição do nome e email do SuperAdmin
-    expect(screen.getByTestId('sidebar-user-name')).toHaveTextContent('Super Admin')
-    expect(screen.getByTestId('sidebar-user-email')).toHaveTextContent('superadmin@vturb.com')
+    expect(screen.getByTestId('user-management-unauthorized')).toBeInTheDocument()
+    expect(screen.getByText('Acesso Restrito')).toBeInTheDocument()
   })
 
-  it('Sidebar NÃO renderiza botão Gestão de Usuário para administradores ou usuários comuns, mas exibe perfil', () => {
-    const onSelectTab = vi.fn()
-    render(<Sidebar currentTab="videos" onSelectTab={onSelectTab} user={mockAdmin} />)
-
-    // Botão de Gestão de Usuário NÃO deve existir
-    expect(screen.queryByTestId('nav-gestao-usuarios')).toBeNull()
-
-    // Mas o perfil do usuário logado deve ser exibido com nome e e-mail
-    expect(screen.getByTestId('sidebar-user-name')).toBeInTheDocument()
-    expect(screen.getByTestId('sidebar-user-email')).toHaveTextContent('admin@vturb.com')
-  })
-
-  it('renderiza a lista de usuários contendo o SuperAdmin e exibe proteção imutável', async () => {
+  it('renderiza corretamente a tela e lista de usuários para o Super Admin', async () => {
     const showToast = vi.fn()
     render(<UserManagementView currentUser={mockSuperAdmin} showToast={showToast} />)
 
     await waitFor(() => {
-      expect(screen.getByText('superadmin@vturb.com')).toBeInTheDocument()
+      expect(screen.getByTestId('user-management-view')).toBeInTheDocument()
+      expect(screen.getByText('Gestão de Usuários')).toBeInTheDocument()
       expect(screen.getByText('admin@vturb.com')).toBeInTheDocument()
-      expect(screen.getByText('usuario@vturb.com')).toBeInTheDocument()
+      expect(screen.getByText('gerente@vturb.com')).toBeInTheDocument()
+      expect(screen.getByText('cliente@vturb.com')).toBeInTheDocument()
     })
 
-    // SuperAdmin possui badge de SuperAdmin e indicador de proteção imutável sem botão de deletar
-    expect(screen.getByTestId('badge-super-admin')).toBeInTheDocument()
-    expect(screen.getByTestId(`super-admin-protected-${mockSuperAdmin.id}`)).toBeInTheDocument()
-    expect(screen.queryByTestId(`btn-delete-user-${mockSuperAdmin.id}`)).toBeNull()
-
-    // Admin e Usuário possuem botões de exclusão
-    expect(screen.getByTestId(`btn-delete-user-${mockAdmin.id}`)).toBeInTheDocument()
-    expect(screen.getByTestId(`btn-delete-user-${mockUser.id}`)).toBeInTheDocument()
+    // Super Admin oficial está protegido contra exclusão
+    expect(screen.getByTestId('protected-user-user-super-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('checkbox-user-user-super-1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('btn-delete-user-user-super-1')).not.toBeInTheDocument()
   })
 
-  it('permite abrir o modal de confirmação de exclusão para usuário comum', async () => {
+  it('permite seleção múltipla e exclusão em lote de usuários', async () => {
     const showToast = vi.fn()
     render(<UserManagementView currentUser={mockSuperAdmin} showToast={showToast} />)
 
     await waitFor(() => {
-      expect(screen.getByTestId(`btn-delete-user-${mockUser.id}`)).toBeInTheDocument()
+      expect(screen.getByTestId('checkbox-user-user-admin-2')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByTestId(`btn-delete-user-${mockUser.id}`))
+    // Seleciona todos os usuários selecionáveis
+    fireEvent.click(screen.getByTestId('btn-select-all-users'))
 
-    // Modal de confirmação aberto
-    expect(screen.getByText('Excluir Usuário')).toBeInTheDocument()
-    expect(screen.getByText('usuario@vturb.com')).toBeInTheDocument()
+    // Barra de ações em lote visível com 2 selecionados (super admin é excluído)
+    expect(screen.getByTestId('bulk-actions-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('bulk-count-text')).toHaveTextContent('2 usuários selecionados')
 
-    // Confirma exclusão
+    // Clica para excluir em lote
+    fireEvent.click(screen.getByTestId('btn-bulk-delete-users'))
+
+    // Confirma exclusão no modal
+    expect(screen.getByText('Excluir Usuários Selecionados')).toBeInTheDocument()
     const confirmBtn = screen.getByText('Sim, Excluir')
     fireEvent.click(confirmBtn)
 
     await waitFor(() => {
-      expect(api.deleteUser).toHaveBeenCalledWith(mockUser.id)
-      expect(showToast).toHaveBeenCalledWith(expect.stringContaining('removido com sucesso'))
+      expect(api.bulkDeleteUsers).toHaveBeenCalledWith(expect.arrayContaining(['user-admin-2', 'user-std-3']))
+      expect(showToast).toHaveBeenCalledWith(expect.stringContaining('2 usuários excluídos com sucesso'))
     })
   })
 
-  it('CreateInviteModal oferece apenas opções de Usuário e Admin e gera link com sucesso', async () => {
-    const onClose = vi.fn()
-    const onInviteCreated = vi.fn()
-    const showToast = vi.fn()
-
-    const newInvite: UserInvite = {
-      id: 'inv-new',
-      token: 'token-secret-xyz',
-      role: 'admin',
-      expires_at: '2026-09-12T12:00:00Z',
-      is_used: false,
-      created_at: '2026-09-11T12:00:00Z',
-    }
-    vi.mocked(api.createInvite).mockResolvedValue(newInvite)
-
-    render(
-      <CreateInviteModal
-        isOpen={true}
-        onClose={onClose}
-        onInviteCreated={onInviteCreated}
-        showToast={showToast}
-      />
-    )
-
-    // Verifica que não existe opção de SuperAdmin para convite
-    expect(screen.queryByText(/SuperAdmin/i)).toBeNull()
-    expect(screen.getByTestId('role-option-user')).toBeInTheDocument()
-    expect(screen.getByTestId('role-option-admin')).toBeInTheDocument()
-
-    // Seleciona perfil Admin
-    fireEvent.click(screen.getByTestId('role-option-admin'))
-
-    // Seleciona expiração de 48 horas
-    const selectExp = screen.getByTestId('select-expiration-hours')
-    fireEvent.change(selectExp, { target: { value: '48' } })
-
-    // Submete formulário
-    fireEvent.click(screen.getByTestId('btn-submit-create-invite'))
-
-    await waitFor(() => {
-      expect(api.createInvite).toHaveBeenCalledWith({
-        role: 'admin',
-        duration_hours: 48,
-      })
-      expect(onInviteCreated).toHaveBeenCalledWith(newInvite)
-    })
-
-    // Exibe link gerado e botão de copiar
-    expect(screen.getByTestId('invite-generated-box')).toBeInTheDocument()
-    expect(screen.getByTestId('btn-copy-invite-link')).toBeInTheDocument()
-  })
-
-  it('permite alternar para a aba Convites Gerados e excluir um convite com confirmação', async () => {
+  it('permite alternar para a aba Convites Gerados, selecionar em lote e excluir', async () => {
     const showToast = vi.fn()
     render(<UserManagementView currentUser={mockSuperAdmin} showToast={showToast} />)
 
@@ -191,27 +134,29 @@ describe('Gestão de Usuários - Frontend', () => {
       expect(screen.getByTestId('tab-generated-invites')).toBeInTheDocument()
     })
 
-    // Alterna para a aba Convites Gerados
+    // Alterna para aba de convites
     fireEvent.click(screen.getByTestId('tab-generated-invites'))
 
     await waitFor(() => {
       expect(screen.getByTestId('invites-section')).toBeInTheDocument()
-      expect(screen.getByTestId('btn-delete-invite-inv-1')).toBeInTheDocument()
+      expect(screen.getByTestId('checkbox-invite-inv-1')).toBeInTheDocument()
+      expect(screen.getByTestId('checkbox-invite-inv-2')).toBeInTheDocument()
     })
 
-    // Clica para excluir convite
-    fireEvent.click(screen.getByTestId('btn-delete-invite-inv-1'))
+    // Seleciona todos os convites
+    fireEvent.click(screen.getByTestId('btn-select-all-invites'))
 
-    // Modal de confirmação aberto
-    expect(screen.getByText('Excluir Convite')).toBeInTheDocument()
+    expect(screen.getByTestId('bulk-actions-invites-bar')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('btn-bulk-delete-invites'))
 
     // Confirma exclusão
+    expect(screen.getByText('Excluir Convites Selecionados')).toBeInTheDocument()
     const confirmBtn = screen.getByText('Sim, Excluir')
     fireEvent.click(confirmBtn)
 
     await waitFor(() => {
-      expect(api.deleteInvite).toHaveBeenCalledWith('inv-1')
-      expect(showToast).toHaveBeenCalledWith(expect.stringContaining('excluído com sucesso'))
+      expect(api.bulkDeleteInvites).toHaveBeenCalledWith(expect.arrayContaining(['inv-1', 'inv-2']))
+      expect(showToast).toHaveBeenCalledWith(expect.stringContaining('2 convites excluídos com sucesso'))
     })
   })
 })

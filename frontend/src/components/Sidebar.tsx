@@ -1,10 +1,10 @@
 import React from 'react'
-import { Video as VideoIcon, Users } from 'lucide-react'
+import { Video as VideoIcon, Users, Database } from 'lucide-react'
 import type { User } from '../types/auth'
 
 interface SidebarProps {
-  currentTab?: 'videos' | 'users'
-  onSelectTab?: (tab: 'videos' | 'users') => void
+  currentTab?: 'videos' | 'users' | 'backups'
+  onSelectTab?: (tab: 'videos' | 'users' | 'backups') => void
   user?: User | null
 }
 
@@ -74,6 +74,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <VideoIcon size={20} color={currentTab === 'videos' ? '#0284c7' : '#64748b'} />
           <span>Meus vídeos</span>
         </button>
+
+        {/* Botão de Backup Automático visível estritamente para SuperAdmin (posicionado logo acima de Gestão de Usuário) */}
+        {user?.is_super_admin && (
+          <button
+            type="button"
+            data-testid="nav-backup-automatico"
+            onClick={() => onSelectTab?.('backups')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              width: '100%',
+              padding: '0.85rem 1.15rem',
+              borderRadius: '12px',
+              border: 'none',
+              backgroundColor: currentTab === 'backups' ? '#e0f2fe' : 'transparent',
+              color: currentTab === 'backups' ? '#0284c7' : '#64748b',
+              fontWeight: currentTab === 'backups' ? 600 : 500,
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              textAlign: 'left',
+              boxShadow: currentTab === 'backups' ? '0 2px 4px rgba(2, 132, 199, 0.08)' : 'none',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Database size={20} color={currentTab === 'backups' ? '#0284c7' : '#64748b'} />
+            <span>Backup Automático</span>
+          </button>
+        )}
 
         {/* Botão de Gestão de Usuário visível estritamente para SuperAdmin */}
         {user?.is_super_admin && (

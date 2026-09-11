@@ -68,6 +68,10 @@ yarn-error.log*
 backend/static/uploads/*
 !backend/static/uploads/.gitkeep
 
+# Backups e dumps locais
+backend/backups/*
+!backend/backups/.gitkeep
+
 # Pastas e arquivos locais arquivados
 Arquivos/
 Estudo Site/

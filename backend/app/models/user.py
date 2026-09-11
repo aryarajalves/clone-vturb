@@ -29,3 +29,15 @@ class UserInvite(Base):
     used_by_email = Column(String(255), nullable=True)
     created_by_user_id = Column(String(36), nullable=True)
     created_at = Column(DateTime(timezone=True), default=get_utc_now)
+
+class EmailVerificationCode(Base):
+    __tablename__ = "email_verification_codes"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String(255), nullable=False, index=True)
+    token = Column(String(64), nullable=False, index=True)
+    code = Column(String(10), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now)
+

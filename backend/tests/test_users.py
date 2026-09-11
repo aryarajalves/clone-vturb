@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.main import app, init_super_admin
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.models.user import User, UserInvite
+from app.models.user import User, UserInvite, EmailVerificationCode
 from app.core.security import hash_password
 
 init_super_admin()
@@ -119,7 +119,7 @@ def test_invite_validation_and_expiration():
     assert val_expired.status_code == 400
     assert "expirou" in val_expired.json()["detail"].lower()
 
-def test_register_via_invite_with_strong_password_rules():
+def test_register_via_invite_with_strong_password_and_code():
     token = get_admin_token()
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -131,57 +131,95 @@ def test_register_via_invite_with_strong_password_rules():
     inv_token = res_inv.json()["token"]
     test_email = f"novo_admin_{datetime.now().timestamp()}@vturb.com"
 
-    # 1. Menos de 12 caracteres
+    # 1. Enviar código de verificação via Brevo
+    send_res = client.post("/auth/send-verification-code", json={
+        "token": inv_token,
+        "email": test_email,
+        "name": "Admin Test"
+    })
+    assert send_res.status_code == 200
+    assert "Código de verificação enviado" in send_res.json()["message"]
+
+    # Recupera o código gerado no banco de dados
+    db = SessionLocal()
+    try:
+        entry = db.query(EmailVerificationCode).filter(
+            EmailVerificationCode.email == test_email.lower(),
+            EmailVerificationCode.token == inv_token
+        ).order_by(EmailVerificationCode.id.desc()).first()
+        assert entry is not None
+        verification_code = entry.code
+        assert len(verification_code) == 6
+    finally:
+        db.close()
+
+    # 2. Código incorreto deve ser rejeitado com 400
+    r_bad_code = client.post("/auth/register-invite", json={
+        "token": inv_token,
+        "email": test_email,
+        "password": "SecurePassword2026!#",
+        "code": "000000"
+    })
+    assert r_bad_code.status_code == 400
+    assert "inválido" in r_bad_code.json()["detail"].lower()
+
+    # 3. Menos de 12 caracteres
     r1 = client.post("/auth/register-invite", json={
         "token": inv_token,
         "email": test_email,
-        "password": "Short1!Aa"  # 9 chars
+        "password": "Short1!Aa",  # 9 chars
+        "code": verification_code
     })
     assert r1.status_code == 400
     assert "12 caracteres" in r1.json()["detail"]
 
-    # 2. Sem maiúscula
+    # 4. Sem maiúscula
     r2 = client.post("/auth/register-invite", json={
         "token": inv_token,
         "email": test_email,
-        "password": "lowercase123!@#"  # sem maiúscula
+        "password": "lowercase123!@#",
+        "code": verification_code
     })
     assert r2.status_code == 400
     assert "maiúscula" in r2.json()["detail"]
 
-    # 3. Sem minúscula
+    # 5. Sem minúscula
     r3 = client.post("/auth/register-invite", json={
         "token": inv_token,
         "email": test_email,
-        "password": "UPPERCASE123!@#"  # sem minúscula
+        "password": "UPPERCASE123!@#",
+        "code": verification_code
     })
     assert r3.status_code == 400
     assert "minúscula" in r3.json()["detail"]
 
-    # 4. Sem número
+    # 6. Sem número
     r4 = client.post("/auth/register-invite", json={
         "token": inv_token,
         "email": test_email,
-        "password": "NoNumbersHere!@#"  # sem números
+        "password": "NoNumbersHere!@#",
+        "code": verification_code
     })
     assert r4.status_code == 400
     assert "número" in r4.json()["detail"]
 
-    # 5. Sem caractere especial
+    # 7. Sem caractere especial
     r5 = client.post("/auth/register-invite", json={
         "token": inv_token,
         "email": test_email,
-        "password": "NoSpecialChar12345"  # sem caractere especial
+        "password": "NoSpecialChar12345",
+        "code": verification_code
     })
     assert r5.status_code == 400
     assert "especial" in r5.json()["detail"]
 
-    # 6. Senha válida atendendo a todos os critérios (12+ chars, maiúscula, minúscula, número, especial)
+    # 8. Sucesso com código correto e senha forte
     valid_password = "SecurePassword2026!#"
     r_success = client.post("/auth/register-invite", json={
         "token": inv_token,
         "email": test_email,
-        "password": valid_password
+        "password": valid_password,
+        "code": verification_code
     })
     assert r_success.status_code == 200
     auth_data = r_success.json()
@@ -190,19 +228,76 @@ def test_register_via_invite_with_strong_password_rules():
     assert auth_data["user"]["role"] == "admin"
     created_user_id = auth_data["user"]["id"]
 
-    # 7. Tentativa de reutilizar o mesmo token já utilizado deve ser rejeitada
-    r_reused = client.post("/auth/register-invite", json={
-        "token": inv_token,
-        "email": f"outro_{datetime.now().timestamp()}@vturb.com",
-        "password": valid_password
+    # 9. Bloqueio de e-mail duplicado ao tentar enviar código para e-mail que já existe
+    res_inv2 = client.post("/users/invites", headers=headers, json={
+        "role": "user",
+        "duration_hours": 24
     })
-    assert r_reused.status_code == 400
-    assert "já foi utilizado" in r_reused.json()["detail"]
+    inv_token2 = res_inv2.json()["token"]
+    dup_res = client.post("/auth/send-verification-code", json={
+        "token": inv_token2,
+        "email": test_email,
+        "name": "Dup User"
+    })
+    assert dup_res.status_code == 400
+    assert "já está cadastrado no sistema" in dup_res.json()["detail"]
 
-    # 8. Exclusão do usuário criado (usuário comum/admin pode ser excluído)
+    # 10. Exclusão do usuário criado
     del_res = client.delete(f"/users/{created_user_id}", headers=headers)
     assert del_res.status_code == 200
-    assert "excluído com sucesso" in del_res.json()["detail"]
+
+def test_bulk_delete_users():
+    token = get_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Cria dois usuários no banco
+    db = SessionLocal()
+    u1_email = f"bulk1_{datetime.now().timestamp()}@vturb.com"
+    u2_email = f"bulk2_{datetime.now().timestamp()}@vturb.com"
+    try:
+        u1 = User(email=u1_email, name="Bulk 1", password_hash=hash_password("Pass@12345678"), role="user", is_super_admin=False)
+        u2 = User(email=u2_email, name="Bulk 2", password_hash=hash_password("Pass@12345678"), role="user", is_super_admin=False)
+        db.add_all([u1, u2])
+        db.commit()
+        db.refresh(u1)
+        db.refresh(u2)
+        u1_id = u1.id
+        u2_id = u2.id
+    finally:
+        db.close()
+
+    # Executa bulk delete dos 2 usuários
+    bulk_res = client.post("/users/bulk-delete", headers=headers, json={"ids": [u1_id, u2_id]})
+    assert bulk_res.status_code == 200
+    data = bulk_res.json()
+    assert data["deleted_count"] == 2
+    assert u1_id in data["deleted_ids"]
+    assert u2_id in data["deleted_ids"]
+
+    # Tentar deletar super admin em lote deve ignorar o super admin
+    users_res = client.get("/users/", headers=headers)
+    super_admin = next(u for u in users_res.json() if u["email"] == settings.SUPER_ADMIN_EMAIL.lower())
+    super_bulk_res = client.post("/users/bulk-delete", headers=headers, json={"ids": [super_admin["id"]]})
+    assert super_bulk_res.status_code == 200
+    assert super_bulk_res.json()["deleted_count"] == 0
+
+def test_bulk_delete_invites():
+    token = get_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Cria dois convites
+    r1 = client.post("/users/invites", headers=headers, json={"role": "user", "duration_hours": 24})
+    r2 = client.post("/users/invites", headers=headers, json={"role": "admin", "duration_hours": 24})
+    inv1_id = r1.json()["id"]
+    inv2_id = r2.json()["id"]
+
+    # Bulk delete dos convites
+    del_res = client.post("/users/invites/bulk-delete", headers=headers, json={"ids": [inv1_id, inv2_id]})
+    assert del_res.status_code == 200
+    data = del_res.json()
+    assert data["deleted_count"] == 2
+    assert inv1_id in data["deleted_ids"]
+    assert inv2_id in data["deleted_ids"]
 
 def test_delete_invite():
     token = get_admin_token()

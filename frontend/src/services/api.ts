@@ -6,6 +6,8 @@ import type {
   CreateInvitePayload,
   InviteValidation,
   RegisterInvitePayload,
+  SendVerificationCodePayload,
+  BulkDeleteResponse,
 } from '../types/auth'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8003'
@@ -314,6 +316,53 @@ export async function deleteInvite(inviteId: string): Promise<{ detail: string }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || 'Falha ao excluir convite.')
+  }
+  return res.json()
+}
+
+export async function sendVerificationCode(payload: SendVerificationCodePayload): Promise<{ message: string; email: string }> {
+  const res = await fetch(`${API_BASE}/auth/send-verification-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao enviar código de verificação.')
+  }
+  return res.json()
+}
+
+export async function bulkDeleteUsers(ids: string[]): Promise<BulkDeleteResponse> {
+  const res = await fetch(`${API_BASE}/users/bulk-delete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ ids }),
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao excluir usuários selecionados.')
+  }
+  return res.json()
+}
+
+export async function bulkDeleteInvites(ids: string[]): Promise<BulkDeleteResponse> {
+  const res = await fetch(`${API_BASE}/users/invites/bulk-delete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ ids }),
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao excluir convites selecionados.')
   }
   return res.json()
 }

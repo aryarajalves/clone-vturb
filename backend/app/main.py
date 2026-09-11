@@ -13,6 +13,7 @@ from app.api.health import router as health_router
 from app.api.videos import router as videos_router
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
+from app.api.backups import router as backups_router
 
 logger = logging.getLogger("projetovturb")
 logging.basicConfig(level=logging.INFO)
@@ -109,6 +110,7 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(videos_router)
 app.include_router(users_router)
+app.include_router(backups_router, prefix="/backups", tags=["Backups"])
 
 @app.get("/")
 def root():
