@@ -1,0 +1,24 @@
+# Framework web moderno e assíncrono para construção de APIs
+fastapi>=0.110.0
+# Servidor ASGI de alta performance para execução do FastAPI
+uvicorn[standard]>=0.28.0
+# Validação e estruturação de esquemas de dados
+pydantic>=2.6.0
+# Leitura e gerenciamento tipado de configurações de ambiente
+pydantic-settings>=2.2.0
+# Suporte a upload de arquivos e multipart/form-data no FastAPI
+python-multipart>=0.0.9
+# Driver binário para conexão com PostgreSQL
+psycopg2-binary>=2.9.9
+# ORM e toolkit SQL para gerenciamento do banco de dados
+sqlalchemy>=2.0.28
+# Framework de testes unitários do backend
+pytest>=8.0.0
+# Cliente HTTP assíncrono para execução de testes unitários na API
+httpx>=0.27.0
+# Suporte a rotas e testes assíncronos no Pytest
+pytest-asyncio>=0.23.5
+# Carregamento de variáveis do arquivo .env
+python-dotenv>=1.0.1
+# Cliente SDK para comunicação com Backblaze B2 (API compatível com S3)
+boto3>=1.34.0

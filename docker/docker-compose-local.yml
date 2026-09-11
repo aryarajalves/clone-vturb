@@ -1,0 +1,54 @@
+name: projetovturb
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vturb_user
+      POSTGRES_PASSWORD: vturb_password
+      POSTGRES_DB: vturb_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vturb_user -d vturb_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+    container_name: backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://vturb_user:vturb_password@postgres:5432/vturb_db
+    ports:
+      - "8003:8000"
+    volumes:
+      - ../backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "5175:5175"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    name: projetovturb_postgres_data
