@@ -433,13 +433,13 @@ describe('Mecânicas de Vídeo - Frontend', () => {
     expect(screen.getByTestId('turbo-banner')).toBeInTheDocument()
     expect(screen.getByTestId('turbo-toggle')).toBeInTheDocument()
     expect(screen.getByTestId('turbo-status-text')).toHaveTextContent(/Desativado/i)
-    expect(screen.getByTestId('turbo-disabled-notice')).toBeInTheDocument()
+    expect(screen.queryByTestId('turbo-content')).not.toBeInTheDocument()
     expect(screen.getByTestId('current-speed-display')).toHaveTextContent('1.00x')
 
     // Ativar pelo switch toggle
     fireEvent.click(screen.getByTestId('turbo-toggle'))
     expect(screen.getByTestId('turbo-status-text')).toHaveTextContent(/Ativado/i)
-    expect(screen.queryByTestId('turbo-disabled-notice')).not.toBeInTheDocument()
+    expect(screen.getByTestId('turbo-content')).toBeInTheDocument()
 
     // Presets entre 0.5x e 2.0x devem estar disponíveis
     const preset05 = screen.getByTestId('preset-speed-0.5')

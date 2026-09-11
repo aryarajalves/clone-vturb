@@ -5,6 +5,7 @@ import { VideoFloatingPlayerTab } from '../components/video-detail/VideoFloating
 import { VideoPitchDelayTab } from '../components/video-detail/VideoPitchDelayTab'
 import { VideoPixelsTab } from '../components/video-detail/VideoPixelsTab'
 import { VideoSecurityTab } from '../components/video-detail/VideoSecurityTab'
+import { VideoTurboTab } from '../components/video-detail/VideoTurboTab'
 import type { Video } from '../types/video'
 
 const mockVideoDisabled: Video = {
@@ -13,6 +14,8 @@ const mockVideoDisabled: Video = {
   video_url: 'https://cdn.exemplo.com/video.mp4',
   duration: 120,
   player_settings: {
+    turbo_enabled: false,
+    playback_rate: 1.0,
     smart_autoplay: {
       enabled: false,
       text: 'Vídeo em andamento',
@@ -198,5 +201,65 @@ describe('Renderização Condicional das Configurações de Vídeo (Ocultar quan
     fireEvent.click(screen.getByTestId('security-toggle'))
 
     expect(screen.getByTestId('security-content')).toBeInTheDocument()
+  })
+
+  it('Modo Turbo: esconde controles e prévia quando desativado e exibe ao ativar', () => {
+    const onSaveMock = vi.fn()
+    const showToastMock = vi.fn()
+
+    render(
+      <VideoTurboTab
+        video={mockVideoDisabled}
+        onSave={onSaveMock}
+        showToast={showToastMock}
+      />
+    )
+
+    // Inicialmente desativado -> data-testid="turbo-content" não deve existir
+    expect(screen.queryByTestId('turbo-content')).not.toBeInTheDocument()
+
+    // Ativa o switch
+    fireEvent.click(screen.getByTestId('turbo-toggle'))
+
+    // Conteúdo e controles de velocidade devem estar visíveis
+    expect(screen.getByTestId('turbo-content')).toBeInTheDocument()
+    expect(screen.getByTestId('turbo-speed-slider')).toBeInTheDocument()
+  })
+
+  it('Modo Turbo: ao desativar o switch, executa auto-save e oculta conteúdo inferior', async () => {
+    const onSaveMock = vi.fn()
+    const showToastMock = vi.fn()
+
+    const videoTurboEnabled: Video = {
+      ...mockVideoDisabled,
+      player_settings: {
+        ...mockVideoDisabled.player_settings,
+        turbo_enabled: true,
+        playback_rate: 1.5,
+      },
+    }
+
+    render(
+      <VideoTurboTab
+        video={videoTurboEnabled}
+        onSave={onSaveMock}
+        showToast={showToastMock}
+      />
+    )
+
+    // Inicialmente ativado -> data-testid="turbo-content" visível
+    expect(screen.getByTestId('turbo-content')).toBeInTheDocument()
+
+    // Desativa o switch
+    fireEvent.click(screen.getByTestId('turbo-toggle'))
+
+    // Conteúdo deve sumir imediatamente
+    expect(screen.queryByTestId('turbo-content')).not.toBeInTheDocument()
+
+    // Auto-save deve ser disparado e emitir toast
+    await waitFor(() => {
+      expect(onSaveMock).toHaveBeenCalled()
+      expect(showToastMock).toHaveBeenCalledWith('Modo Turbo desativado com sucesso!')
+    })
   })
 })

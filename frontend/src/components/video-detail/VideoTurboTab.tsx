@@ -59,9 +59,35 @@ export const VideoTurboTab: React.FC<VideoTurboTabProps> = ({ video, onSave, sho
     setEnabled(true)
   }
 
-  const handleReset = () => {
+  const handleToggle = async (newVal: boolean) => {
+    setEnabled(newVal)
+    if (newVal && speed === 1.0) {
+      setSpeed(1.25)
+    }
+    if (!newVal) {
+      try {
+        setSaving(true)
+        const updatedSettings = {
+          ...video.player_settings,
+          playback_rate: 1.0,
+          turbo_enabled: false,
+        }
+        const updated = await updateVideo(video.id, {
+          player_settings: updatedSettings,
+        })
+        onSave(updated)
+        showToast('Modo Turbo desativado com sucesso!')
+      } catch {
+        showToast('Erro ao desativar Modo Turbo.')
+      } finally {
+        setSaving(false)
+      }
+    }
+  }
+
+  const handleReset = async () => {
     setSpeed(1.0)
-    setEnabled(false)
+    await handleToggle(false)
   }
 
   const handleSave = async () => {
@@ -138,11 +164,7 @@ export const VideoTurboTab: React.FC<VideoTurboTabProps> = ({ video, onSave, sho
                 type="checkbox"
                 data-testid="turbo-toggle"
                 checked={enabled}
-                onChange={(e) => {
-                  const checked = e.target.checked
-                  setEnabled(checked)
-                  if (checked && speed === 1.0) setSpeed(1.25)
-                }}
+                onChange={(e) => handleToggle(e.target.checked)}
                 style={{ opacity: 0, width: 0, height: 0 }}
               />
               <span style={{ position: 'absolute', inset: 0, backgroundColor: enabled ? '#f59e0b' : 'rgba(255, 255, 255, 0.25)', borderRadius: '34px', transition: 'all 0.25s ease', boxShadow: enabled ? '0 0 10px rgba(245, 158, 11, 0.6)' : 'none' }}>
@@ -166,41 +188,23 @@ export const VideoTurboTab: React.FC<VideoTurboTabProps> = ({ video, onSave, sho
         </div>
       </div>
 
-      {/* Grid Principal: Controles de Velocidade + Prévia do Player */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
-        {/* Painel Esquerdo: Seletores de Velocidade */}
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div>
-            <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Gauge size={18} color="#f59e0b" />
-              Predefinições Rápidas (0.5x até 2.0x)
-            </h4>
-            <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-              Selecione uma das velocidades recomendadas para aplicar automaticamente.
-            </p>
-          </div>
-
-          {/* Aviso se o Turbo estiver desativado */}
-          {!enabled && (
-            <div
-              data-testid="turbo-disabled-notice"
-              style={{
-                background: '#fffbeb',
-                border: '1px solid #fde68a',
-                borderRadius: '10px',
-                padding: '0.75rem 1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                color: '#92400e',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-              }}
-            >
-              <Info size={16} color="#d97706" style={{ flexShrink: 0 }} />
-              <span>O Modo Turbo está desativado. Ative a chave acima ou escolha uma velocidade para ativá-lo.</span>
+      {/* Grid Principal: Controles de Velocidade + Prévia do Player (Visível EXCLUSIVAMENTE quando Ativado) */}
+      {enabled && (
+        <div
+          data-testid="turbo-content"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}
+        >
+          {/* Painel Esquerdo: Seletores de Velocidade */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+            <div>
+              <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Gauge size={18} color="#f59e0b" />
+                Predefinições Rápidas (0.5x até 2.0x)
+              </h4>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
+                Selecione uma das velocidades recomendadas para aplicar automaticamente.
+              </p>
             </div>
-          )}
 
           {/* Botões de Predefinição */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '0.6rem' }}>
@@ -448,6 +452,7 @@ export const VideoTurboTab: React.FC<VideoTurboTabProps> = ({ video, onSave, sho
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
