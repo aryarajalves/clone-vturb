@@ -25,6 +25,7 @@ describe('LoginView Component', () => {
     expect(screen.getByText('Alta Conversão')).toBeInTheDocument()
     expect(screen.getByText('Smart Autoplay Ativo')).toBeInTheDocument()
     expect(screen.getByText('Turbo Autoplay')).toBeInTheDocument()
+    expect(screen.queryByText(/Proteção Máxima com Argon2id/i)).not.toBeInTheDocument()
   })
 
   it('alterna visibilidade da senha ao clicar no botão de olho', () => {

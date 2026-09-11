@@ -250,25 +250,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
-
-        {/* Informações de Segurança */}
-        <div
-          style={{
-            marginTop: '3rem',
-            padding: '1rem',
-            backgroundColor: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-          }}
-        >
-          <ShieldCheck size={22} color="#10b981" />
-          <div style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: '1.4' }}>
-            <strong style={{ color: '#334155' }}>Proteção Máxima com Argon2id:</strong> Criptografia memory-hard com 64MB de RAM por cálculo para neutralizar ataques de força bruta.
-          </div>
-        </div>
       </div>
 
       {/* Coluna Direita: Imagem e Showcase Visual */}
