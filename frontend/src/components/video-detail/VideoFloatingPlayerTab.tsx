@@ -197,25 +197,6 @@ export const VideoFloatingPlayerTab: React.FC<VideoFloatingPlayerTabProps> = ({
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button
                   type="button"
-                  data-testid="floating-pos-bottom-right"
-                  disabled={!enabled}
-                  onClick={() => setPosition('bottom-right')}
-                  style={{
-                    flex: 1,
-                    padding: '0.65rem',
-                    borderRadius: '8px',
-                    border: position === 'bottom-right' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                    background: position === 'bottom-right' ? '#eff6ff' : '#ffffff',
-                    color: position === 'bottom-right' ? '#1d4ed8' : '#475569',
-                    fontWeight: 600,
-                    fontSize: '0.85rem',
-                    cursor: enabled ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  Canto Inferior Direito
-                </button>
-                <button
-                  type="button"
                   data-testid="floating-pos-bottom-left"
                   disabled={!enabled}
                   onClick={() => setPosition('bottom-left')}
@@ -232,6 +213,25 @@ export const VideoFloatingPlayerTab: React.FC<VideoFloatingPlayerTabProps> = ({
                   }}
                 >
                   Canto Inferior Esquerdo
+                </button>
+                <button
+                  type="button"
+                  data-testid="floating-pos-bottom-right"
+                  disabled={!enabled}
+                  onClick={() => setPosition('bottom-right')}
+                  style={{
+                    flex: 1,
+                    padding: '0.65rem',
+                    borderRadius: '8px',
+                    border: position === 'bottom-right' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: position === 'bottom-right' ? '#eff6ff' : '#ffffff',
+                    color: position === 'bottom-right' ? '#1d4ed8' : '#475569',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: enabled ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Canto Inferior Direito
                 </button>
               </div>
             </div>
