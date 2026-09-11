@@ -40,28 +40,63 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast }
     '4:3': '75%',
   }
 
+  const listenerScript = `
+<script>
+(function() {
+  window.addEventListener('message', function(e) {
+    if (!e.data) return;
+    if (e.data.type === 'VTURB_PITCH_REACHED') {
+      var sel = e.data.targetSelector || '.delay-pitch';
+      document.querySelectorAll(sel).forEach(function(el) { el.style.display = 'block'; });
+      if (e.data.autoScroll) {
+        var first = document.querySelector(sel);
+        if (first) {
+          var top = first.getBoundingClientRect().top + window.pageYOffset - (e.data.scrollOffset || 50);
+          window.scrollTo({ top: top, behavior: 'smooth' });
+        }
+      }
+      if (e.data.persistence && e.data.videoId) {
+        try { localStorage.setItem('vturb_pitch_' + e.data.videoId, '1'); } catch(err) {}
+      }
+    }
+    if (e.data.type === 'VTURB_PIXEL_TRACK') {
+      var evt = e.data.eventName;
+      if (typeof window.fbq === 'function') window.fbq('trackCustom', evt, { video_id: e.data.videoId });
+      if (typeof window.gtag === 'function') window.gtag('event', evt, { video_id: e.data.videoId });
+      if (typeof window.ttq === 'function' && typeof window.ttq.track === 'function') window.ttq.track(evt, { video_id: e.data.videoId });
+    }
+  });
+  try {
+    if (localStorage.getItem('vturb_pitch_${video.id}') === '1') {
+      var sel = '${video.player_settings?.pitch_delay?.target_css_selector || '.delay-pitch'}';
+      document.querySelectorAll(sel).forEach(function(el) { el.style.display = 'block'; });
+    }
+  } catch(err) {}
+})();
+</script>`
+
   let iframeCode = ''
   let scriptCode = ''
 
   if (heightPreset === 'custom' && resolvedHeight) {
     iframeCode = `<div style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
   <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay; fullscreen" allowfullscreen></iframe>
-</div>`
+</div>${listenerScript}`
     scriptCode = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
   <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay; fullscreen"></iframe>
-</div>`
+</div>${listenerScript}`
   } else {
     const pTop = paddingTopMap[heightPreset] || '56.25%'
     iframeCode = `<div style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
   <div style="position:relative;width:100%;padding-top:${pTop};">
     <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay; fullscreen" allowfullscreen></iframe>
   </div>
-</div>`
+</div>${listenerScript}`
     scriptCode = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
   <div style="position:relative;width:100%;padding-top:${pTop};">
     <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay; fullscreen"></iframe>
   </div>
-</div>`
+</div>${listenerScript}`
   }
 
   const currentCode = embedType === 'iframe' ? iframeCode : scriptCode
@@ -294,6 +329,29 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast }
             {copied ? <Check size={14} /> : <Copy size={14} />}
             {copied ? 'Copiado!' : 'Copiar'}
           </button>
+        </div>
+
+        {/* Aviso de Sincronização em Tempo Real */}
+        <div
+          data-testid="embed-sync-notice"
+          style={{
+            marginBottom: '1rem',
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '8px',
+            padding: '0.85rem 1.1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            color: '#166534',
+            fontSize: '0.84rem',
+            lineHeight: 1.4,
+          }}
+        >
+          <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>⚡</span>
+          <div>
+            <strong>Sincronização em Tempo Real:</strong> Você só precisa copiar e colar este código no seu site <strong>uma única vez</strong>. Todas as configurações extras (Modo Turbo, Smart Autoplay, Pitch Delay, Pixels de Rastreamento e Segurança) são carregadas dinamicamente e atualizadas automaticamente na sua página sempre que você salvar alterações aqui no painel!
+          </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

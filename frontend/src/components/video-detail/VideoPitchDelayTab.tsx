@@ -340,8 +340,11 @@ export const VideoPitchDelayTab: React.FC<VideoPitchDelayTabProps> = ({
               {exampleCssSnippet}
             </pre>
 
-            <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '1rem', lineHeight: '1.5' }}>
-              Cole esse CSS na sua página externa (ex: Elementor ou bloco HTML). Quando o vídeo atingir {time} segundos, o player automaticamente tornará visíveis todos os elementos com a classe configurada.
+            <p style={{ fontSize: '0.82rem', color: '#475569', marginTop: '1rem', lineHeight: '1.5' }}>
+              Cole esse CSS na sua página externa (ex: Elementor ou bloco HTML). Quando o vídeo atingir {time} segundos, o player tornará visíveis todos os elementos com a classe configurada.<br />
+              <span style={{ display: 'inline-block', marginTop: '0.4rem', color: '#059669', fontWeight: 600 }}>
+                ⚡ Sincronização Automática: Não é necessário copiar o código de embedding novamente. Qualquer alteração de tempo salva aqui entra no ar instantaneamente no seu site!
+              </span>
             </p>
           </div>
         </div>
