@@ -8,9 +8,8 @@ import {
   ChevronRight,
   CheckSquare,
   Square,
-  MinusSquare,
-  ShieldCheck,
-  User as UserIcon,
+  Shield,
+  Link,
 } from 'lucide-react'
 import type { UserInvite } from '../../types/auth'
 
@@ -44,9 +43,6 @@ export const InvitesTable: React.FC<InvitesTableProps> = ({
   const allCurrentSelected =
     paginatedInvites.length > 0 &&
     paginatedInvites.every((i) => selectedIds.includes(i.id))
-
-  const someCurrentSelected =
-    paginatedInvites.some((i) => selectedIds.includes(i.id)) && !allCurrentSelected
 
   const handleToggleSelectAll = () => {
     if (allCurrentSelected) {
@@ -93,250 +89,392 @@ export const InvitesTable: React.FC<InvitesTableProps> = ({
     }
   }
 
-  const handleExecuteBulkDelete = () => {
-    if (selectedIds.length === 0) return
-    onBulkDeleteInvites(selectedIds)
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '—'
+    try {
+      const d = new Date(dateStr)
+      return d.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return dateStr
+    }
+  }
+
+  const isExpired = (expiresAt: string) => {
+    try {
+      return new Date(expiresAt).getTime() < Date.now()
+    } catch {
+      return false
+    }
   }
 
   return (
-    <div className="space-y-4" data-testid="invites-section">
-      {/* Barra de Ações em Lote */}
-      {selectedIds.length > 0 && (
-        <div
-          data-testid="bulk-actions-invites-bar"
-          className="flex items-center justify-between px-4 py-3 bg-red-950/40 border border-red-500/40 rounded-xl backdrop-blur-md animate-fade-in"
-        >
-          <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse" />
-            <span className="text-sm font-medium text-red-200">
-              {selectedIds.length} {selectedIds.length === 1 ? 'convite selecionado' : 'convites selecionados'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSelectedIds([])}
-              className="px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              Desmarcar todos
-            </button>
-            <button
-              onClick={handleExecuteBulkDelete}
-              data-testid="btn-bulk-delete-invites"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-lg shadow-lg shadow-red-900/30 transition-all"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Excluir selecionados ({selectedIds.length})
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tabela de Convites */}
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-zinc-900/60 backdrop-blur-sm">
-        <table className="w-full text-left border-collapse text-sm" data-testid="invites-table">
-          <thead>
-            <tr className="border-b border-white/10 bg-white/5 text-zinc-400 text-xs font-semibold uppercase tracking-wider">
-              <th className="w-12 px-4 py-3.5 text-center">
-                <button
-                  onClick={handleToggleSelectAll}
-                  data-testid="btn-select-all-invites"
-                  disabled={paginatedInvites.length === 0}
-                  className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title={allCurrentSelected ? 'Desmarcar todos da página' : 'Selecionar todos da página'}
-                >
-                  {allCurrentSelected ? (
-                    <CheckSquare className="w-4 h-4 text-emerald-400" />
-                  ) : someCurrentSelected ? (
-                    <MinusSquare className="w-4 h-4 text-emerald-400" />
-                  ) : (
-                    <Square className="w-4 h-4" />
-                  )}
-                </button>
-              </th>
-              <th className="px-4 py-3.5">Função do Convite</th>
-              <th className="px-4 py-3.5">Status</th>
-              <th className="px-4 py-3.5">Criado em</th>
-              <th className="px-4 py-3.5">Expira em</th>
-              <th className="px-4 py-3.5">Link</th>
-              <th className="px-4 py-3.5 text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {paginatedInvites.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
-                  Nenhum convite gerado. Clique em &ldquo;Criar Convite&rdquo; para convidar alguém.
-                </td>
-              </tr>
+    <div data-testid="invites-section">
+      {/* Barra de Ações em Lote e Contagem */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            type="button"
+            data-testid="btn-select-all-invites"
+            onClick={handleToggleSelectAll}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 0.85rem',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#ffffff',
+              color: '#334155',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {allCurrentSelected ? (
+              <CheckSquare size={16} color="#0284c7" />
             ) : (
-              paginatedInvites.map((invite) => {
-                const isSelected = selectedIds.includes(invite.id)
-                const isExpired = new Date(invite.expires_at) < new Date()
-                const isCopied = copiedToken === invite.token
-
-                return (
-                  <tr
-                    key={invite.id}
-                    data-testid={`invite-row-${invite.id}`}
-                    className={`transition-colors ${
-                      isSelected ? 'bg-red-950/20 hover:bg-red-950/30' : 'hover:bg-white/5'
-                    }`}
-                  >
-                    <td className="px-4 py-3.5 text-center">
-                      <button
-                        onClick={() => handleToggleSelectInvite(invite.id)}
-                        data-testid={`checkbox-invite-${invite.id}`}
-                        className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-emerald-400" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
-                    </td>
-
-                    <td className="px-4 py-3.5">
-                      {invite.role === 'admin' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 rounded-full">
-                          <ShieldCheck className="w-3 h-3 text-blue-400" />
-                          ADMIN
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-full">
-                          <UserIcon className="w-3 h-3 text-zinc-400" />
-                          USUÁRIO
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3.5">
-                      {invite.is_used ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700 rounded">
-                          Usado por {invite.used_by_email || 'usuário'}
-                        </span>
-                      ) : isExpired ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 rounded">
-                          Expirado
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
-                          Ativo
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3.5 text-zinc-400 text-xs">
-                      {new Date(invite.created_at).toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-
-                    <td className="px-4 py-3.5 text-zinc-400 text-xs">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-zinc-500" />
-                        <span>
-                          {new Date(invite.expires_at).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3.5">
-                      <button
-                        type="button"
-                        onClick={(e) => handleCopyInviteUrl(e, invite.token)}
-                        data-testid={`btn-copy-invite-${invite.id}`}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                          isCopied
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10'
-                        }`}
-                        title="Copiar link do convite"
-                      >
-                        {isCopied ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            Copiado!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                            Copiar Link
-                          </>
-                        )}
-                      </button>
-                    </td>
-
-                    <td className="px-4 py-3.5 text-right">
-                      <button
-                        onClick={() => onDeleteInvite(invite)}
-                        data-testid={`btn-delete-invite-${invite.id}`}
-                        className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                        title="Excluir convite"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })
+              <Square size={16} color="#64748b" />
             )}
-          </tbody>
-        </table>
+            <span>{allCurrentSelected ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
+          </button>
+
+          {selectedIds.length > 0 && (
+            <div
+              data-testid="bulk-actions-invites-bar"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '8px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fee2e2',
+              }}
+            >
+              <span
+                data-testid="bulk-count-invites-text"
+                style={{ fontSize: '0.85rem', fontWeight: 600, color: '#dc2626' }}
+              >
+                {selectedIds.length} {selectedIds.length === 1 ? 'convite selecionado' : 'convites selecionados'}
+              </span>
+              <button
+                type="button"
+                data-testid="btn-bulk-delete-invites"
+                onClick={() => onBulkDeleteInvites(selectedIds)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',
+                }}
+              >
+                <Trash2 size={15} />
+                <span>Excluir</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+          {invites.length} {invites.length === 1 ? 'convite registrado' : 'convites registrados'}
+        </span>
       </div>
 
-      {/* Rodapé com Paginação de 20 itens */}
-      {invites.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-xs text-zinc-400" data-testid="invites-pagination">
-          <div>
-            Mostrando{' '}
-            <span className="font-semibold text-white">
-              {(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1}
-            </span>{' '}
-            a{' '}
-            <span className="font-semibold text-white">
-              {Math.min(safeCurrentPage * ITEMS_PER_PAGE, invites.length)}
-            </span>{' '}
-            de <span className="font-semibold text-white">{invites.length}</span> convites
-          </div>
+      {/* Card da Tabela */}
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '0.9rem 1.25rem', width: '40px' }}></th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                  Link do Convite
+                </th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                  Função
+                </th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                  Expiração
+                </th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                  Status
+                </th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', textAlign: 'right' }}>
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedInvites.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                    Nenhum convite gerado. Clique em "Criar Convite" para gerar o primeiro.
+                  </td>
+                </tr>
+              ) : (
+                paginatedInvites.map((invite) => {
+                  const isChecked = selectedIds.includes(invite.id)
+                  const expired = isExpired(invite.expires_at)
+                  const isCopied = copiedToken === invite.token
 
-          <div className="flex items-center gap-2">
-            <span className="text-zinc-500">
+                  return (
+                    <tr
+                      key={invite.id}
+                      data-testid={`invite-row-${invite.id}`}
+                      style={{
+                        borderBottom: '1px solid #f1f5f9',
+                        backgroundColor: isChecked ? '#f0f9ff' : 'transparent',
+                        transition: 'background-color 0.15s',
+                      }}
+                    >
+                      <td style={{ padding: '0.9rem 1.25rem' }}>
+                        <button
+                          type="button"
+                          data-testid={`checkbox-invite-${invite.id}`}
+                          onClick={() => handleToggleSelectInvite(invite.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        >
+                          {isChecked ? <CheckSquare size={18} color="#0284c7" /> : <Square size={18} color="#94a3b8" />}
+                        </button>
+                      </td>
+
+                      {/* Coluna Link / Token */}
+                      <td style={{ padding: '0.9rem 1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <Link size={16} color="#64748b" />
+                          <code
+                            style={{
+                              backgroundColor: '#f1f5f9',
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: '6px',
+                              fontSize: '0.825rem',
+                              color: '#334155',
+                              fontFamily: 'monospace',
+                            }}
+                          >
+                            ...{invite.token.slice(-14)}
+                          </code>
+                          <button
+                            type="button"
+                            data-testid={`btn-copy-invite-${invite.id}`}
+                            onClick={(e) => handleCopyInviteUrl(e, invite.token)}
+                            title="Copiar link do convite"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: isCopied ? '#16a34a' : '#0284c7',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '0.2rem',
+                            }}
+                          >
+                            {isCopied ? <Check size={16} /> : <Copy size={16} />}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Coluna Função */}
+                      <td style={{ padding: '0.9rem 1.25rem' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.2rem 0.65rem',
+                            borderRadius: '20px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            backgroundColor: invite.role === 'admin' ? '#e0f2fe' : '#f1f5f9',
+                            color: invite.role === 'admin' ? '#0284c7' : '#475569',
+                            border: invite.role === 'admin' ? '1px solid #bae6fd' : '1px solid #e2e8f0',
+                            letterSpacing: '0.02em',
+                          }}
+                        >
+                          <Shield size={13} />
+                          <span>{invite.role === 'admin' ? 'ADMIN' : 'USUÁRIO'}</span>
+                        </span>
+                      </td>
+
+                      {/* Coluna Expiração */}
+                      <td style={{ padding: '0.9rem 1.25rem', color: '#64748b', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Clock size={14} color="#94a3b8" />
+                          <span>{formatDate(invite.expires_at)}</span>
+                        </div>
+                      </td>
+
+                      {/* Coluna Status */}
+                      <td style={{ padding: '0.9rem 1.25rem' }}>
+                        {invite.is_used ? (
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '20px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              backgroundColor: '#f1f5f9',
+                              color: '#64748b',
+                            }}
+                          >
+                            Utilizado
+                          </span>
+                        ) : expired ? (
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '20px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              backgroundColor: '#fee2e2',
+                              color: '#dc2626',
+                            }}
+                          >
+                            Expirado
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '20px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              backgroundColor: '#dcfce7',
+                              color: '#15803d',
+                            }}
+                          >
+                            Disponível
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Coluna Ações */}
+                      <td style={{ padding: '0.9rem 1.25rem', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          data-testid={`btn-delete-invite-${invite.id}`}
+                          onClick={() => onDeleteInvite(invite)}
+                          title="Excluir convite"
+                          style={{
+                            padding: '0.45rem',
+                            borderRadius: '8px',
+                            border: '1px solid #fecaca',
+                            backgroundColor: '#fef2f2',
+                            color: '#ef4444',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginação */}
+        {totalPages > 1 && (
+          <div
+            data-testid="invites-pagination"
+            style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#ffffff',
+            }}
+          >
+            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
               Página {safeCurrentPage} de {totalPages}
             </span>
-            <div className="flex items-center gap-1">
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
+                type="button"
+                data-testid="pagination-invites-prev"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={safeCurrentPage <= 1}
-                data-testid="btn-prev-invites-page"
-                className="p-1.5 rounded-lg border border-white/10 bg-zinc-900/60 text-zinc-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Página anterior"
+                disabled={safeCurrentPage === 1}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                  cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.85rem',
+                }}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft size={16} />
+                <span>Anterior</span>
               </button>
               <button
+                type="button"
+                data-testid="pagination-invites-next"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safeCurrentPage >= totalPages}
-                data-testid="btn-next-invites-page"
-                className="p-1.5 rounded-lg border border-white/10 bg-zinc-900/60 text-zinc-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Próxima página"
+                disabled={safeCurrentPage === totalPages}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: safeCurrentPage === totalPages ? '#94a3b8' : '#334155',
+                  cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.85rem',
+                }}
               >
-                <ChevronRight className="w-4 h-4" />
+                <span>Próximo</span>
+                <ChevronRight size={16} />
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

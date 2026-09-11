@@ -23,11 +23,17 @@ interface UserManagementViewProps {
   showToast: (msg: string) => void
 }
 
+const USER_TAB_KEY = 'vturb_user_active_subtab'
+
 export const UserManagementView: React.FC<UserManagementViewProps> = ({
   currentUser,
   showToast,
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'invites'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'invites'>(() => {
+    const saved = localStorage.getItem(USER_TAB_KEY)
+    if (saved === 'users' || saved === 'invites') return saved
+    return 'users'
+  })
   const [users, setUsers] = useState<User[]>([])
   const [invites, setInvites] = useState<UserInvite[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,6 +50,11 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [bulkDeleteUsersLoading, setBulkDeleteUsersLoading] = useState(false)
   const [bulkInvitesToDelete, setBulkInvitesToDelete] = useState<string[]>([])
   const [bulkDeleteInvitesLoading, setBulkDeleteInvitesLoading] = useState(false)
+
+  const handleSelectTab = (tab: 'users' | 'invites') => {
+    setActiveTab(tab)
+    localStorage.setItem(USER_TAB_KEY, tab)
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -137,12 +148,37 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   // Se não for Super Admin, bloqueia acesso
   if (currentUser && !currentUser.is_super_admin && currentUser.role !== 'super_admin') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center" data-testid="user-management-unauthorized">
-        <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
-          <Lock className="w-8 h-8 text-red-400" />
+      <div
+        data-testid="user-management-unauthorized"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh',
+          padding: '2rem',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '16px',
+            backgroundColor: '#fee2e2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1rem',
+            color: '#ef4444',
+          }}
+        >
+          <Lock size={32} />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
-        <p className="text-zinc-400 max-w-md">
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' }}>
+          Acesso Restrito
+        </h2>
+        <p style={{ color: '#64748b', maxWidth: '420px', fontSize: '0.9rem', lineHeight: '1.5' }}>
           Apenas o Super Administrador tem permissão para visualizar e gerenciar as contas de usuários.
         </p>
       </div>
@@ -150,87 +186,158 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="user-management-view">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <main
+      data-testid="user-management-view"
+      style={{
+        flex: 1,
+        padding: '2rem 3rem',
+        width: '100%',
+        minWidth: 0,
+        boxSizing: 'border-box',
+        height: '100%',
+        overflowY: 'auto',
+      }}
+    >
+      {/* Cabeçalho da Gestão de Usuários */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '2rem',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Users className="w-7 h-7 text-emerald-400" />
-            Gestão de Usuários
-          </h1>
-          <p className="text-zinc-400 text-sm mt-1">
+          <h2
+            style={{
+              fontSize: '1.65rem',
+              fontWeight: 700,
+              color: '#0f172a',
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+            }}
+          >
+            <Users size={28} color="#0284c7" />
+            <span>Gestão de Usuários</span>
+          </h2>
+          <span style={{ fontSize: '0.9rem', color: '#64748b' }}>
             Gerencie os usuários ativos e controle os convites de acesso à plataforma.
-          </p>
+          </span>
         </div>
 
         <button
-          onClick={() => setIsInviteModalOpen(true)}
+          type="button"
           data-testid="btn-open-create-invite"
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-emerald-900/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          onClick={() => setIsInviteModalOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 1.35rem',
+            borderRadius: '10px',
+            border: 'none',
+            backgroundColor: '#0284c7',
+            color: '#ffffff',
+            fontWeight: 600,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+            transition: 'all 0.2s',
+          }}
         >
-          <UserPlus className="w-4 h-4" />
-          Criar Convite
+          <UserPlus size={18} />
+          <span>Criar Convite</span>
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-white/10 pb-px">
+      {/* Navegação por Abas (Design System VTurb) */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          borderBottom: '1px solid #e2e8f0',
+          marginBottom: '1.75rem',
+        }}
+      >
         <button
-          onClick={() => setActiveTab('users')}
+          type="button"
           data-testid="tab-active-users"
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors relative ${
-            activeTab === 'users'
-              ? 'text-emerald-400'
-              : 'text-zinc-400 hover:text-white'
-          }`}
+          onClick={() => handleSelectTab('users')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            padding: '0.85rem 1.5rem',
+            border: 'none',
+            borderBottom: activeTab === 'users' ? '2px solid #0284c7' : '2px solid transparent',
+            backgroundColor: 'transparent',
+            color: activeTab === 'users' ? '#0284c7' : '#64748b',
+            fontWeight: activeTab === 'users' ? 600 : 500,
+            fontSize: '0.95rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
         >
-          <Users className="w-4 h-4" />
-          Usuários Ativos
+          <Users size={18} />
+          <span>Usuários Ativos</span>
           <span
-            className={`px-2 py-0.5 text-xs rounded-full ${
-              activeTab === 'users'
-                ? 'bg-emerald-500/20 text-emerald-300'
-                : 'bg-white/5 text-zinc-400'
-            }`}
+            style={{
+              padding: '0.15rem 0.55rem',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              borderRadius: '20px',
+              backgroundColor: activeTab === 'users' ? '#e0f2fe' : '#f1f5f9',
+              color: activeTab === 'users' ? '#0284c7' : '#64748b',
+            }}
           >
             {users.length}
           </span>
-          {activeTab === 'users' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />
-          )}
         </button>
 
         <button
-          onClick={() => setActiveTab('invites')}
+          type="button"
           data-testid="tab-generated-invites"
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors relative ${
-            activeTab === 'invites'
-              ? 'text-emerald-400'
-              : 'text-zinc-400 hover:text-white'
-          }`}
+          onClick={() => handleSelectTab('invites')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            padding: '0.85rem 1.5rem',
+            border: 'none',
+            borderBottom: activeTab === 'invites' ? '2px solid #0284c7' : '2px solid transparent',
+            backgroundColor: 'transparent',
+            color: activeTab === 'invites' ? '#0284c7' : '#64748b',
+            fontWeight: activeTab === 'invites' ? 600 : 500,
+            fontSize: '0.95rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
         >
-          <UserPlus className="w-4 h-4" />
-          Convites Gerados
+          <UserPlus size={18} />
+          <span>Convites Gerados</span>
           <span
-            className={`px-2 py-0.5 text-xs rounded-full ${
-              activeTab === 'invites'
-                ? 'bg-emerald-500/20 text-emerald-300'
-                : 'bg-white/5 text-zinc-400'
-            }`}
+            style={{
+              padding: '0.15rem 0.55rem',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              borderRadius: '20px',
+              backgroundColor: activeTab === 'invites' ? '#e0f2fe' : '#f1f5f9',
+              color: activeTab === 'invites' ? '#0284c7' : '#64748b',
+            }}
           >
             {invites.length}
           </span>
-          {activeTab === 'invites' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />
-          )}
         </button>
       </div>
 
-      {/* Content */}
+      {/* Conteúdo da Aba */}
       {loading ? (
-        <div className="p-12 text-center text-zinc-500 flex flex-col items-center justify-center gap-3">
-          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <span>Carregando dados...</span>
+        <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+          <div>Carregando dados de usuários...</div>
         </div>
       ) : activeTab === 'users' ? (
         <UsersTable
@@ -254,7 +361,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         onClose={() => setIsInviteModalOpen(false)}
         onInviteCreated={(newInvite) => {
           setInvites((prev) => [newInvite, ...prev])
-          setActiveTab('invites')
+          handleSelectTab('invites')
         }}
         showToast={showToast}
       />
@@ -301,6 +408,6 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         onConfirm={handleBulkDeleteInvitesConfirm}
         onCancel={() => setBulkInvitesToDelete([])}
       />
-    </div>
+    </main>
   )
 }

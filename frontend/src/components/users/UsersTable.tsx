@@ -2,14 +2,12 @@ import React, { useState, useMemo } from 'react'
 import {
   Trash2,
   Lock,
-  ShieldAlert,
-  ShieldCheck,
-  User as UserIcon,
   ChevronLeft,
   ChevronRight,
   CheckSquare,
   Square,
-  MinusSquare,
+  Shield,
+  ShieldAlert,
 } from 'lucide-react'
 import type { User } from '../../types/auth'
 
@@ -53,9 +51,6 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     selectableOnCurrentPage.length > 0 &&
     selectableOnCurrentPage.every((u) => selectedIds.includes(u.id))
 
-  const someCurrentSelected =
-    selectableOnCurrentPage.some((u) => selectedIds.includes(u.id)) && !allCurrentSelected
-
   const handleToggleSelectAll = () => {
     if (allCurrentSelected) {
       const currentIds = new Set(selectableOnCurrentPage.map((u) => u.id))
@@ -72,251 +67,397 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     )
   }
 
-  const handleExecuteBulkDelete = () => {
-    if (selectedIds.length === 0) return
-    onBulkDeleteUsers(selectedIds)
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '—'
+    try {
+      const d = new Date(dateStr)
+      return d.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return dateStr
+    }
+  }
+
+  const getRoleBadge = (user: User) => {
+    if (user.is_super_admin || user.role === 'super_admin') {
+      return {
+        label: 'SUPER ADMIN',
+        bg: '#f3e8ff',
+        color: '#7e22ce',
+        border: '1px solid #d8b4fe',
+      }
+    }
+    if (user.role === 'admin') {
+      return {
+        label: 'ADMIN',
+        bg: '#e0f2fe',
+        color: '#0284c7',
+        border: '1px solid #bae6fd',
+      }
+    }
+    return {
+      label: 'USUÁRIO',
+      bg: '#f1f5f9',
+      color: '#475569',
+      border: '1px solid #e2e8f0',
+    }
   }
 
   return (
-    <div className="space-y-4" data-testid="users-section">
-      {/* Barra de Ações em Lote */}
-      {selectedIds.length > 0 && (
-        <div
-          data-testid="bulk-actions-bar"
-          className="flex items-center justify-between px-4 py-3 bg-red-950/40 border border-red-500/40 rounded-xl backdrop-blur-md animate-fade-in"
-        >
-          <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse" />
-            <span className="text-sm font-medium text-red-200" data-testid="bulk-count-text">
-              {selectedIds.length} {selectedIds.length === 1 ? 'usuário selecionado' : 'usuários selecionados'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSelectedIds([])}
-              className="px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              Desmarcar todos
-            </button>
-            <button
-              onClick={handleExecuteBulkDelete}
-              data-testid="btn-bulk-delete-users"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-lg shadow-lg shadow-red-900/30 transition-all"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Excluir selecionados ({selectedIds.length})
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tabela de Usuários */}
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-zinc-900/60 backdrop-blur-sm">
-        <table className="w-full text-left border-collapse text-sm" data-testid="users-table">
-          <thead>
-            <tr className="border-b border-white/10 bg-white/5 text-zinc-400 text-xs font-semibold uppercase tracking-wider">
-              <th className="w-12 px-4 py-3.5 text-center">
-                <button
-                  onClick={handleToggleSelectAll}
-                  data-testid="btn-select-all-users"
-                  disabled={selectableOnCurrentPage.length === 0}
-                  className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title={allCurrentSelected ? 'Desmarcar todos da página' : 'Selecionar todos da página'}
-                >
-                  {allCurrentSelected ? (
-                    <CheckSquare className="w-4 h-4 text-emerald-400" />
-                  ) : someCurrentSelected ? (
-                    <MinusSquare className="w-4 h-4 text-emerald-400" />
-                  ) : (
-                    <Square className="w-4 h-4" />
-                  )}
-                </button>
-              </th>
-              <th className="px-4 py-3.5">Usuário</th>
-              <th className="px-4 py-3.5">Função</th>
-              <th className="px-4 py-3.5">Data de Criação</th>
-              <th className="px-4 py-3.5 text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {paginatedUsers.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
-                  Nenhum usuário encontrado.
-                </td>
-              </tr>
+    <div data-testid="users-section">
+      {/* Barra de Ações em Lote e Contagem */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            type="button"
+            data-testid="btn-select-all-users"
+            onClick={handleToggleSelectAll}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 0.85rem',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#ffffff',
+              color: '#334155',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {allCurrentSelected ? (
+              <CheckSquare size={16} color="#0284c7" />
             ) : (
-              paginatedUsers.map((user) => {
-                const selectable = isSelectable(user)
-                const isSelected = selectedIds.includes(user.id)
-                const isSuperAdmin = user.is_super_admin || user.role === 'super_admin'
-                const isCurrent = currentUser?.id === user.id
+              <Square size={16} color="#64748b" />
+            )}
+            <span>{allCurrentSelected ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
+          </button>
 
-                return (
-                  <tr
-                    key={user.id}
-                    data-testid={`user-row-${user.id}`}
-                    className={`transition-colors ${
-                      isSelected ? 'bg-red-950/20 hover:bg-red-950/30' : 'hover:bg-white/5'
-                    }`}
-                  >
-                    <td className="px-4 py-3.5 text-center">
-                      {selectable ? (
-                        <button
-                          onClick={() => handleToggleSelectUser(user.id)}
-                          data-testid={`checkbox-user-${user.id}`}
-                          className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-emerald-400" />
-                          ) : (
-                            <Square className="w-4 h-4" />
-                          )}
-                        </button>
-                      ) : (
-                        <span title="Protegido contra seleção e exclusão" data-testid={`protected-user-${user.id}`}>
-                          <Lock className="w-3.5 h-3.5 mx-auto text-zinc-600" />
-                        </span>
-                      )}
-                    </td>
+          {selectedIds.length > 0 && (
+            <div
+              data-testid="bulk-actions-bar"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '8px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fee2e2',
+              }}
+            >
+              <span
+                data-testid="bulk-count-text"
+                style={{ fontSize: '0.85rem', fontWeight: 600, color: '#dc2626' }}
+              >
+                {selectedIds.length} {selectedIds.length === 1 ? 'usuário selecionado' : 'usuários selecionados'}
+              </span>
+              <button
+                type="button"
+                data-testid="btn-bulk-delete-users"
+                onClick={() => onBulkDeleteUsers(selectedIds)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',
+                }}
+              >
+                <Trash2 size={15} />
+                <span>Excluir</span>
+              </button>
+            </div>
+          )}
+        </div>
 
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-inner ${
-                            isSuperAdmin
-                              ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
-                              : user.role === 'admin'
-                              ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
-                              : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
-                          }`}
-                        >
-                          {user.email.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">{user.email}</span>
-                            {isCurrent && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded">
-                                Você
+        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+          {users.length} {users.length === 1 ? 'usuário registrado' : 'usuários registrados'}
+        </span>
+      </div>
+
+      {/* Card da Tabela */}
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '0.9rem 1.25rem', width: '40px' }}></th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                  Usuário
+                </th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                  Função
+                </th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                  Data de Criação
+                </th>
+                <th style={{ padding: '0.9rem 1.25rem', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', textAlign: 'right' }}>
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                    Nenhum usuário encontrado.
+                  </td>
+                </tr>
+              ) : (
+                paginatedUsers.map((user) => {
+                  const isChecked = selectedIds.includes(user.id)
+                  const selectable = isSelectable(user)
+                  const isSuper = user.is_super_admin || user.role === 'super_admin'
+                  const badge = getRoleBadge(user)
+                  const initial = (user.name?.charAt(0) || user.email.charAt(0) || 'U').toUpperCase()
+
+                  return (
+                    <tr
+                      key={user.id}
+                      data-testid={`user-row-${user.id}`}
+                      style={{
+                        borderBottom: '1px solid #f1f5f9',
+                        backgroundColor: isChecked ? '#f0f9ff' : 'transparent',
+                        transition: 'background-color 0.15s',
+                      }}
+                    >
+                      <td style={{ padding: '0.9rem 1.25rem' }}>
+                        {selectable ? (
+                          <button
+                            type="button"
+                            data-testid={`checkbox-user-${user.id}`}
+                            onClick={() => handleToggleSelectUser(user.id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                          >
+                            {isChecked ? <CheckSquare size={18} color="#0284c7" /> : <Square size={18} color="#94a3b8" />}
+                          </button>
+                        ) : (
+                          <span data-testid={`protected-user-${user.id}`}>
+                            <Lock size={16} color="#94a3b8" title="Conta protegida" />
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Coluna do Usuário */}
+                      <td style={{ padding: '0.9rem 1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                          <div
+                            style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '10px',
+                              background: isSuper
+                                ? 'linear-gradient(135deg, #7c3aed, #6d28d9)'
+                                : 'linear-gradient(135deg, #0284c7, #0369a1)',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: '0.9rem',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {initial}
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem' }}>
+                                {user.email}
+                              </span>
+                              {currentUser && user.id === currentUser.id && (
+                                <span
+                                  style={{
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    backgroundColor: '#f1f5f9',
+                                    color: '#64748b',
+                                    padding: '0.1rem 0.4rem',
+                                    borderRadius: '6px',
+                                  }}
+                                >
+                                  Você
+                                </span>
+                              )}
+                            </div>
+                            {user.name && (
+                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                {user.name}
                               </span>
                             )}
                           </div>
-                          {user.name && <span className="text-xs text-zinc-400">{user.name}</span>}
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="px-4 py-3.5">
-                      {isSuperAdmin ? (
+                      {/* Coluna Função */}
+                      <td style={{ padding: '0.9rem 1.25rem' }}>
                         <span
                           data-testid={`badge-role-${user.id}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 rounded-full"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.2rem 0.65rem',
+                            borderRadius: '20px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            backgroundColor: badge.bg,
+                            color: badge.color,
+                            border: badge.border,
+                            letterSpacing: '0.02em',
+                          }}
                         >
-                          <ShieldAlert className="w-3 h-3 text-purple-400" />
-                          SUPER ADMIN
+                          {isSuper ? <ShieldAlert size={13} /> : <Shield size={13} />}
+                          <span>{badge.label}</span>
                         </span>
-                      ) : user.role === 'admin' ? (
-                        <span
-                          data-testid={`badge-role-${user.id}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 rounded-full"
-                        >
-                          <ShieldCheck className="w-3 h-3 text-blue-400" />
-                          ADMIN
-                        </span>
-                      ) : (
-                        <span
-                          data-testid={`badge-role-${user.id}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-full"
-                        >
-                          <UserIcon className="w-3 h-3 text-zinc-400" />
-                          USUÁRIO
-                        </span>
-                      )}
-                    </td>
+                      </td>
 
-                    <td className="px-4 py-3.5 text-zinc-400 text-xs">
-                      {user.created_at
-                        ? new Date(user.created_at).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : '—'}
-                    </td>
+                      {/* Coluna Data */}
+                      <td style={{ padding: '0.9rem 1.25rem', color: '#64748b', fontSize: '0.85rem' }}>
+                        {formatDate(user.created_at)}
+                      </td>
 
-                    <td className="px-4 py-3.5 text-right">
-                      {selectable ? (
-                        <button
-                          onClick={() => onDeleteUser(user)}
-                          data-testid={`btn-delete-user-${user.id}`}
-                          className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                          title="Excluir usuário"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <span
-                          className="inline-flex items-center gap-1 text-[11px] text-zinc-500 cursor-not-allowed"
-                          title="O Super Admin oficial e a própria conta não podem ser excluídos"
-                        >
-                          <Lock className="w-3 h-3" />
-                          Protegido
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                      {/* Coluna Ações */}
+                      <td style={{ padding: '0.9rem 1.25rem', textAlign: 'right' }}>
+                        {selectable ? (
+                          <button
+                            type="button"
+                            data-testid={`btn-delete-user-${user.id}`}
+                            onClick={() => onDeleteUser(user)}
+                            title="Excluir usuário"
+                            style={{
+                              padding: '0.45rem',
+                              borderRadius: '8px',
+                              border: '1px solid #fecaca',
+                              backgroundColor: '#fef2f2',
+                              color: '#ef4444',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              fontSize: '0.75rem',
+                              color: '#94a3b8',
+                              fontWeight: 500,
+                            }}
+                          >
+                            <Lock size={14} />
+                            <span>Protegido</span>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Rodapé com Paginação de 20 itens */}
-      {users.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-xs text-zinc-400" data-testid="users-pagination">
-          <div>
-            Mostrando{' '}
-            <span className="font-semibold text-white">
-              {(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1}
-            </span>{' '}
-            a{' '}
-            <span className="font-semibold text-white">
-              {Math.min(safeCurrentPage * ITEMS_PER_PAGE, users.length)}
-            </span>{' '}
-            de <span className="font-semibold text-white">{users.length}</span> usuários
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-zinc-500">
+        {/* Paginação */}
+        {totalPages > 1 && (
+          <div
+            data-testid="users-pagination"
+            style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#ffffff',
+            }}
+          >
+            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
               Página {safeCurrentPage} de {totalPages}
             </span>
-            <div className="flex items-center gap-1">
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
+                type="button"
+                data-testid="pagination-users-prev"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={safeCurrentPage <= 1}
-                data-testid="btn-prev-users-page"
-                className="p-1.5 rounded-lg border border-white/10 bg-zinc-900/60 text-zinc-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Página anterior"
+                disabled={safeCurrentPage === 1}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                  cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.85rem',
+                }}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft size={16} />
+                <span>Anterior</span>
               </button>
               <button
+                type="button"
+                data-testid="pagination-users-next"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safeCurrentPage >= totalPages}
-                data-testid="btn-next-users-page"
-                className="p-1.5 rounded-lg border border-white/10 bg-zinc-900/60 text-zinc-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Próxima página"
+                disabled={safeCurrentPage === totalPages}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: safeCurrentPage === totalPages ? '#94a3b8' : '#334155',
+                  cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.85rem',
+                }}
               >
-                <ChevronRight className="w-4 h-4" />
+                <span>Próximo</span>
+                <ChevronRight size={16} />
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
