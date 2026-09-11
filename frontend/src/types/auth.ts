@@ -3,6 +3,7 @@ export type UserRole = 'super_admin' | 'admin' | 'user'
 export interface User {
   id: string
   email: string
+  name?: string
   role: UserRole
   is_super_admin: boolean
   created_at: string

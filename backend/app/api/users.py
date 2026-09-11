@@ -18,10 +18,25 @@ from app.schemas.auth import (
 logger = logging.getLogger("projetovturb.users")
 router = APIRouter(prefix="/users", tags=["Gestão de Usuários"])
 
+def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Valida se o usuário autenticado é estritamente o Super Admin oficial."""
+    official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+    is_official = (
+        current_user.email.strip().lower() == official_email or
+        current_user.is_super_admin is True
+    )
+    if not is_official:
+        logger.warning(f"Acesso negado à Gestão de Usuários para {current_user.email} (não é Super Admin)")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito exclusivamente ao Super Admin."
+        )
+    return current_user
+
 @router.get("/", response_model=List[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_super_admin)
 ):
     """Lista todos os usuários cadastrados no sistema, garantindo um único SuperAdmin oficial."""
     users = db.query(User).order_by(User.created_at.asc()).all()
@@ -31,6 +46,8 @@ def list_users(
         if u.email.strip().lower() == official_email:
             u.role = "super_admin"
             u.is_super_admin = True
+            if not u.name:
+                u.name = "Super Admin"
         else:
             if u.is_super_admin or u.role == "super_admin":
                 u.is_super_admin = False
@@ -41,7 +58,7 @@ def list_users(
 def delete_user(
     user_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_super_admin)
 ):
     """Exclui um usuário do sistema. O SuperAdmin NUNCA pode ser excluído."""
     user = db.query(User).filter(User.id == user_id).first()
@@ -74,7 +91,7 @@ def delete_user(
 def create_invite(
     payload: CreateInviteRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_super_admin)
 ):
     """Gera um link de convite para um novo usuário (Admin ou Usuário) com tempo de expiração."""
     role_normalized = payload.role.strip().lower()
@@ -113,7 +130,7 @@ def create_invite(
 @router.get("/invites", response_model=List[InviteResponse])
 def list_invites(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_super_admin)
 ):
     """Lista todos os convites gerados e seus status."""
     invites = db.query(UserInvite).order_by(UserInvite.created_at.desc()).all()
@@ -128,7 +145,7 @@ def list_invites(
 def delete_invite(
     invite_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_super_admin)
 ):
     """Exclui um link de convite."""
     invite = db.query(UserInvite).filter(UserInvite.id == invite_id).first()

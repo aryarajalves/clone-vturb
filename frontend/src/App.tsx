@@ -281,7 +281,12 @@ function App() {
         {!selectedVideo && !isCreatingVideo && (
           <Sidebar
             currentTab={currentTab}
+            user={currentUser}
             onSelectTab={(tab) => {
+              // Garante que apenas SuperAdmin possa alternar para a aba users
+              if (tab === 'users' && !currentUser?.is_super_admin) {
+                return
+              }
               setCurrentTab(tab)
               setSelectedVideo(null)
               setIsCreatingVideo(false)
@@ -311,7 +316,7 @@ function App() {
             }}
             showToast={showToast}
           />
-        ) : currentTab === 'users' ? (
+        ) : currentTab === 'users' && currentUser?.is_super_admin ? (
           <UserManagementView currentUser={currentUser} showToast={showToast} />
         ) : (
           <main style={{ flex: 1, padding: '2rem 3rem', width: '100%', minWidth: 0, boxSizing: 'border-box', height: '100%', overflowY: 'auto' }}>

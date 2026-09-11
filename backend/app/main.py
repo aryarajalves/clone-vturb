@@ -32,6 +32,7 @@ def init_super_admin():
             logger.info(f"Criando conta inicial de Super Admin: {email}")
             user = User(
                 email=email,
+                name="Super Admin",
                 password_hash=hash_password(password),
                 role="super_admin",
                 is_super_admin=True
@@ -46,6 +47,8 @@ def init_super_admin():
                 user.password_hash = hash_password(password)
             user.role = "super_admin"
             user.is_super_admin = True
+            if not user.name:
+                user.name = "Super Admin"
             db.commit()
             logger.info("Credenciais do Super Admin sincronizadas com sucesso!")
 

@@ -59,9 +59,9 @@ describe('Gestão de Usuários - Frontend', () => {
     vi.mocked(api.deleteInvite).mockResolvedValue({ detail: 'Convite excluído.' })
   })
 
-  it('Sidebar renderiza botão Gestão de Usuário e aciona onSelectTab', () => {
+  it('Sidebar renderiza botão Gestão de Usuário e dados de perfil para SuperAdmin', () => {
     const onSelectTab = vi.fn()
-    render(<Sidebar currentTab="videos" onSelectTab={onSelectTab} />)
+    render(<Sidebar currentTab="videos" onSelectTab={onSelectTab} user={mockSuperAdmin} />)
 
     const userBtn = screen.getByTestId('nav-gestao-usuarios')
     expect(userBtn).toBeInTheDocument()
@@ -69,6 +69,22 @@ describe('Gestão de Usuários - Frontend', () => {
 
     fireEvent.click(userBtn)
     expect(onSelectTab).toHaveBeenCalledWith('users')
+
+    // Valida exibição do nome e email do SuperAdmin
+    expect(screen.getByTestId('sidebar-user-name')).toHaveTextContent('Super Admin')
+    expect(screen.getByTestId('sidebar-user-email')).toHaveTextContent('superadmin@vturb.com')
+  })
+
+  it('Sidebar NÃO renderiza botão Gestão de Usuário para administradores ou usuários comuns, mas exibe perfil', () => {
+    const onSelectTab = vi.fn()
+    render(<Sidebar currentTab="videos" onSelectTab={onSelectTab} user={mockAdmin} />)
+
+    // Botão de Gestão de Usuário NÃO deve existir
+    expect(screen.queryByTestId('nav-gestao-usuarios')).toBeNull()
+
+    // Mas o perfil do usuário logado deve ser exibido com nome e e-mail
+    expect(screen.getByTestId('sidebar-user-name')).toBeInTheDocument()
+    expect(screen.getByTestId('sidebar-user-email')).toHaveTextContent('admin@vturb.com')
   })
 
   it('renderiza a lista de usuários contendo o SuperAdmin e exibe proteção imutável', async () => {

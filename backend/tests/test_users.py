@@ -225,3 +225,47 @@ def test_delete_invite():
     del_not_found = client.delete(f"/users/invites/{inv_id}", headers=headers)
     assert del_not_found.status_code == 404
 
+def test_non_super_admin_cannot_access_user_management():
+    # Cria usuário não-super admin
+    db = SessionLocal()
+    non_super_email = f"standard_{datetime.now().timestamp()}@test.com"
+    non_super_pass = "TestPassword@1234"
+    try:
+        user = User(
+            email=non_super_email,
+            name="Normal User",
+            password_hash=hash_password(non_super_pass),
+            role="admin",
+            is_super_admin=False
+        )
+        db.add(user)
+        db.commit()
+    finally:
+        db.close()
+
+    # Faz login como o usuário não-super admin
+    res_login = client.post("/auth/login", json={
+        "email": non_super_email,
+        "password": non_super_pass
+    })
+    assert res_login.status_code == 200
+    token = res_login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Tentativa de listar usuários retorna 403
+    r_list = client.get("/users/", headers=headers)
+    assert r_list.status_code == 403
+    assert "Super Admin" in r_list.json()["detail"]
+
+    # Tentativa de criar convite retorna 403
+    r_inv = client.post("/users/invites", headers=headers, json={"role": "user", "duration_hours": 24})
+    assert r_inv.status_code == 403
+
+    # Tentativa de listar convites retorna 403
+    r_list_inv = client.get("/users/invites", headers=headers)
+    assert r_list_inv.status_code == 403
+
+    # Tentativa de deletar convite retorna 403
+    r_del_inv = client.delete("/users/invites/fake-id", headers=headers)
+    assert r_del_inv.status_code == 403
+

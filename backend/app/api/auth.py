@@ -49,24 +49,40 @@ def validate_strong_password(password: str) -> None:
             detail="A senha deve conter pelo menos um caractere especial (ex: !@#$%^&*)."
         )
 
+def resolve_display_name(user: User, is_super_admin: bool) -> str:
+    """Retorna o nome explícito ou formata o nome a partir do e-mail."""
+    if user.name and user.name.strip():
+        return user.name.strip()
+    if is_super_admin:
+        return "Super Admin"
+    username = user.email.split("@")[0]
+    cleaned = username.replace(".", " ").replace("_", " ").replace("-", " ")
+    parts = [w.capitalize() for w in cleaned.split()]
+    return " ".join(parts) or "Usuário"
+
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    """Autentica o usuário validando a senha com Argon2id e retornando o token JWT."""
+    """Autentica o usuário pelo e-mail e senha com hash Argon2id e gera JWT de 24h."""
     email_clean = payload.email.strip().lower()
-    user = db.query(User).filter(func.lower(User.email) == email_clean).first()
+    user = db.query(User).filter(User.email.ilike(email_clean)).first()
 
-    if not user or not verify_password(payload.password, user.password_hash):
-        logger.warning(f"Tentativa de login falhou para o e-mail: {email_clean}")
+    if not user:
+        logger.warning(f"Tentativa de login com e-mail inexistente: {email_clean}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha incorretos."
         )
 
-    # Assegura que APENAS o email configurado na .env seja o SuperAdmin oficial
+    if not verify_password(payload.password, user.password_hash):
+        logger.warning(f"Tentativa de login com senha incorreta para: {email_clean}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="E-mail ou senha incorretos."
+        )
+
     official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
-    is_official_super = (user.email.strip().lower() == official_email)
-    user.is_super_admin = is_official_super
-    if is_official_super:
+    user.is_super_admin = (user.email.strip().lower() == official_email)
+    if user.is_super_admin:
         user.role = "super_admin"
     elif user.role == "super_admin":
         user.role = "admin"
@@ -79,10 +95,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     })
 
     logger.info(f"Login bem-sucedido para o usuário: {user.email}")
+    user_resp = UserResponse.model_validate(user)
+    user_resp.name = resolve_display_name(user, user.is_super_admin)
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        user=UserResponse.model_validate(user)
+        user=user_resp
     )
 
 @router.get("/me", response_model=UserResponse)
@@ -96,7 +114,9 @@ def get_me(current_user: User = Depends(get_current_user)):
         current_user.is_super_admin = False
         if current_user.role == "super_admin":
             current_user.role = "admin"
-    return UserResponse.model_validate(current_user)
+    resp = UserResponse.model_validate(current_user)
+    resp.name = resolve_display_name(current_user, current_user.is_super_admin)
+    return resp
 
 @router.get("/invite/{token}", response_model=InviteValidateResponse)
 def validate_invite(token: str, db: Session = Depends(get_db)):
@@ -174,8 +194,10 @@ def register_via_invite(payload: RegisterInviteRequest, db: Session = Depends(ge
     if assigned_role not in ["admin", "user"]:
         assigned_role = "user"
 
+    user_name = payload.name.strip() if payload.name and payload.name.strip() else None
     new_user = User(
         email=email_clean,
+        name=user_name,
         password_hash=hash_password(payload.password),
         role=assigned_role,
         is_super_admin=False,

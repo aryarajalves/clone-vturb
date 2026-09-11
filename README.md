@@ -41,8 +41,9 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
   - **E-mail:** `admin@vturb.com`
   - **Senha:** `Admin123456!`
 
-### 👥 Gestão de Usuários e Links de Convite
-- **Navegação por Abas na Barra Lateral**: Acesso direto entre "Meus vídeos" e "Gestão de Usuário".
+### 👥 Gestão de Usuários e Controle de Acesso
+- **Identificação do Usuário na Barra Lateral**: Card fixo no rodapé da Sidebar exibindo o avatar dinâmico com inicial, nome completo e e-mail do usuário logado.
+- **Restrição Rigorosa ao Super Admin**: O botão "Gestão de Usuário" na barra lateral e o acesso ao painel são restritos **exclusivamente** ao Super Admin oficial. Para administradores comuns e usuários normais, o botão não é exibido e qualquer tentativa de acesso via API retorna `HTTP 403 Forbidden`.
 - **Abas Dedicadas com Contadores**: Separação clara entre **"Usuários Ativos"** e **"Convites Gerados"**, cada uma com contadores numéricos dinâmicos em tempo real.
 - **SuperAdmin Oficial Único**: Protegido e vinculado estritamente ao e-mail definido em `SUPER_ADMIN_EMAIL` na `.env`, exibido na lista com badge exclusivo `SUPERADMIN` e proteção contra exclusão via interface e backend (`HTTP 400`). Demais cadastros são automaticamente normalizados como administradores ou usuários padrão.
 - **Geração de Convites Personalizados**: Modal para criação de convites com perfil restrito a **Admin** ou **Usuário** (sem criação de convites para SuperAdmin) e tempo de expiração customizável (`1h`, `6h`, `24h`, `48h`, `7 dias`).
