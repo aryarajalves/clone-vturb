@@ -63,3 +63,24 @@ class BulkDeleteResponse(BaseModel):
     deleted_count: int
     deleted_ids: list[str]
 
+class UpdateUserRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None  # "admin" ou "user"
+    password: Optional[str] = None
+
+class ResetPasswordTriggerResponse(BaseModel):
+    success: bool
+    message: str
+    token: str
+    reset_url: str
+
+class ValidateResetTokenResponse(BaseModel):
+    valid: bool
+    email: str
+    name: Optional[str] = None
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
+

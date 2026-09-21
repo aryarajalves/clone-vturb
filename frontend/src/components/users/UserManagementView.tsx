@@ -17,6 +17,7 @@ import { CreateInviteModal } from './CreateInviteModal'
 import { UsersTable } from './UsersTable'
 import { InvitesTable } from './InvitesTable'
 import { DeleteConfirmModal } from '../DeleteConfirmModal'
+import { ResetPasswordConfirmModal } from './ResetPasswordConfirmModal'
 
 interface UserManagementViewProps {
   currentUser: User | null
@@ -42,6 +43,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   // Exclusão individual
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null)
   const [inviteToDelete, setInviteToDelete] = useState<UserInvite | null>(null)
   const [deleteInviteLoading, setDeleteInviteLoading] = useState(false)
 
@@ -345,6 +347,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
           currentUser={currentUser}
           onDeleteUser={(u) => setUserToDelete(u)}
           onBulkDeleteUsers={(ids) => setBulkUsersToDelete(ids)}
+          onUserUpdated={(updated) => setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)))}
+          onResetPasswordUser={(u) => setUserToResetPassword(u)}
+          showToast={showToast}
         />
       ) : (
         <InvitesTable
@@ -363,6 +368,14 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
           setInvites((prev) => [newInvite, ...prev])
           handleSelectTab('invites')
         }}
+        showToast={showToast}
+      />
+
+      {/* Modal de Redefinição de Senha */}
+      <ResetPasswordConfirmModal
+        isOpen={!!userToResetPassword}
+        user={userToResetPassword}
+        onClose={() => setUserToResetPassword(null)}
         showToast={showToast}
       />
 

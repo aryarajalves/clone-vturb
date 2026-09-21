@@ -364,3 +364,201 @@ def test_non_super_admin_cannot_access_user_management():
     r_del_inv = client.delete("/users/invites/fake-id", headers=headers)
     assert r_del_inv.status_code == 403
 
+def test_super_admin_always_at_top_of_list():
+    token = get_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.get("/users/", headers=headers)
+    assert res.status_code == 200
+    users = res.json()
+    assert len(users) >= 1
+
+    first_user = users[0]
+    assert first_user["is_super_admin"] is True
+    assert first_user["role"] == "super_admin"
+    assert first_user["email"] == settings.SUPER_ADMIN_EMAIL.lower()
+
+def test_update_user_success_and_restrictions():
+    token = get_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Cria um usuário comum para teste de edição
+    db = SessionLocal()
+    unique_ts = int(datetime.now().timestamp())
+    test_email = f"editavel_{unique_ts}@teste.com"
+    try:
+        u = User(
+            email=test_email,
+            name="Nome Original",
+            password_hash=hash_password("OriginalPass123!"),
+            role="user",
+            is_super_admin=False
+        )
+        db.add(u)
+        db.commit()
+        db.refresh(u)
+        test_user_id = u.id
+    finally:
+        db.close()
+
+    # 2. Atualiza nome, e-mail e função para admin com sucesso
+    new_email = f"atualizado_{unique_ts}@teste.com"
+    put_res = client.put(f"/users/{test_user_id}", headers=headers, json={
+        "name": "Nome Atualizado",
+        "email": new_email,
+        "role": "admin",
+        "password": "NovaSenhaForte123!"
+    })
+    assert put_res.status_code == 200
+    updated_data = put_res.json()
+    assert updated_data["name"] == "Nome Atualizado"
+    assert updated_data["email"] == new_email
+    assert updated_data["role"] == "admin"
+
+    # 3. Tentativa de transformar em super_admin deve ser rejeitada com 400
+    put_invalid_role = client.put(f"/users/{test_user_id}", headers=headers, json={
+        "role": "super_admin"
+    })
+    assert put_invalid_role.status_code == 400
+    assert "Não é permitido atribuir a função Super Admin" in put_invalid_role.json()["detail"]
+
+    # 4. Tentativa de editar o Super Admin deve ser rejeitada com 400
+    users_res = client.get("/users/", headers=headers)
+    super_admin = users_res.json()[0]
+    put_super = client.put(f"/users/{super_admin['id']}", headers=headers, json={
+        "name": "Tentando Alterar Super"
+    })
+    assert put_super.status_code == 400
+    assert "Super Admin oficial não pode ser editado" in put_super.json()["detail"]
+
+
+def test_trigger_password_reset_success_and_restrictions():
+    token = get_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Cria um usuário comum para teste
+    db = SessionLocal()
+    unique_ts = int(datetime.now().timestamp()) + 999
+    test_email = f"resetavel_{unique_ts}@teste.com"
+    try:
+        u = User(
+            email=test_email,
+            name="Usuário Reset",
+            password_hash=hash_password("AntigaSenha123!"),
+            role="user",
+            is_super_admin=False
+        )
+        db.add(u)
+        db.commit()
+        db.refresh(u)
+        target_user_id = u.id
+    finally:
+        db.close()
+
+    # 2. Super Admin dispara redefinição de senha com sucesso
+    reset_res = client.post(f"/users/{target_user_id}/reset-password", headers=headers)
+    assert reset_res.status_code == 200
+    data = reset_res.json()
+    assert data["success"] is True
+    assert "token" in data
+    assert "/reset-password?token=" in data["reset_url"]
+
+    # 3. Tentativa de redefinir senha do Super Admin deve retornar 400
+    users_res = client.get("/users/", headers=headers)
+    super_admin = users_res.json()[0]
+    res_super = client.post(f"/users/{super_admin['id']}/reset-password", headers=headers)
+    assert res_super.status_code == 400
+    assert "Não é permitido redefinir a senha do Super Admin" in res_super.json()["detail"]
+
+    # 4. Tentativa de redefinir usuário inexistente retorna 404
+    res_404 = client.post("/users/non-existent-id/reset-password", headers=headers)
+    assert res_404.status_code == 404
+
+    # 5. Usuário sem permissão (não super admin) recebe 403
+    common_login = client.post("/auth/login", json={
+        "email": test_email,
+        "password": "AntigaSenha123!"
+    })
+    assert common_login.status_code == 200
+    common_token = common_login.json()["access_token"]
+    forbidden_res = client.post(
+        f"/users/{target_user_id}/reset-password",
+        headers={"Authorization": f"Bearer {common_token}"}
+    )
+    assert forbidden_res.status_code == 403
+
+
+def test_execute_password_reset_flow():
+    token = get_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Cria usuário
+    db = SessionLocal()
+    unique_ts = int(datetime.now().timestamp()) + 1234
+    test_email = f"fluxo_reset_{unique_ts}@teste.com"
+    try:
+        u = User(
+            email=test_email,
+            name="Fluxo Reset User",
+            password_hash=hash_password("AntigaSenha123!"),
+            role="user",
+            is_super_admin=False
+        )
+        db.add(u)
+        db.commit()
+        db.refresh(u)
+        target_user_id = u.id
+    finally:
+        db.close()
+
+    # 2. Gera token de redefinição
+    trigger_res = client.post(f"/users/{target_user_id}/reset-password", headers=headers)
+    assert trigger_res.status_code == 200
+    reset_token = trigger_res.json()["token"]
+
+    # 3. Valida token via rota pública
+    val_res = client.get(f"/auth/validate-reset-token?token={reset_token}")
+    assert val_res.status_code == 200
+    val_data = val_res.json()
+    assert val_data["valid"] is True
+    assert val_data["email"] == test_email
+
+    # 4. Tentativa de redefinir com senha fraca (<12 caracteres)
+    weak_res = client.post("/auth/reset-password", json={
+        "token": reset_token,
+        "password": "fraca"
+    })
+    assert weak_res.status_code == 400
+    assert "no mínimo 12 caracteres" in weak_res.json()["detail"]
+
+    # 5. Redefine com senha forte válida
+    nova_senha = "NovaSenhaForte2026!#"
+    exec_res = client.post("/auth/reset-password", json={
+        "token": reset_token,
+        "password": nova_senha
+    })
+    assert exec_res.status_code == 200
+    assert exec_res.json()["success"] is True
+
+    # 6. O token consumido não pode ser utilizado novamente
+    reuse_res = client.post("/auth/reset-password", json={
+        "token": reset_token,
+        "password": "OutraSenhaForte2026!#"
+    })
+    assert reuse_res.status_code == 400
+    assert "inválido ou expirado" in reuse_res.json()["detail"]
+
+    # 7. Usuário consegue logar com a nova senha
+    login_new = client.post("/auth/login", json={
+        "email": test_email,
+        "password": nova_senha
+    })
+    assert login_new.status_code == 200
+    assert "access_token" in login_new.json()
+
+    # 8. Usuário NÃO consegue logar com a senha antiga
+    login_old = client.post("/auth/login", json={
+        "email": test_email,
+        "password": "AntigaSenha123!"
+    })
+    assert login_old.status_code == 401
+

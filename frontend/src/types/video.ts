@@ -46,10 +46,34 @@ export interface DomainProtectionSettings {
   anti_download?: boolean
 }
 
+export interface PlayerControlsConfig {
+  rewind_10s?: boolean
+  forward_10s?: boolean
+  volume?: boolean
+  fullscreen?: boolean
+  speed_control?: boolean
+  progress_bar?: boolean
+  video_time?: boolean
+}
+
+export interface ChapterItem {
+  id: string
+  time: string
+  seconds: number
+  title: string
+}
+
+export interface ChaptersSettings {
+  enabled: boolean
+  items: ChapterItem[]
+}
+
 export interface PlayerSettings {
   primary_color: string
   autoplay: boolean
   show_controls: boolean
+  border_radius?: number
+  aspect_ratio?: '16:9' | '9:16'
   cta_enabled: boolean
   cta_time: number
   cta_text: string
@@ -65,6 +89,8 @@ export interface PlayerSettings {
   pitch_delay?: PitchDelaySettings
   tracking_pixels?: TrackingPixelsSettings
   domain_protection?: DomainProtectionSettings
+  controls_config?: PlayerControlsConfig
+  chapters?: ChaptersSettings
 }
 
 

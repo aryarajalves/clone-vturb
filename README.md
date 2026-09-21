@@ -30,12 +30,27 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
 - **Segurança & Domínios Autorizados (Whitelist & Anti-Download)**:
   - Restringe a reprodução do player exclusivamente aos domínios autorizados, bloqueando tentativas de cópia não autorizadas.
   - Proteção anti-download (desativa clique direito e downloads nativos).
+- **Aparência e Estilização do Player**:
+  - Personalização de cor de destaque (paleta pré-definida e seletor hexadecimal).
+  - Controle de formato e estilo do botão de play com prévia dinâmica em tempo real.
+  - Slider de cantos arredondados (0 a 20px) refletido instantaneamente no player.
+  - Customização de controles visuais (barra de progresso, tempo do vídeo, tela cheia, volume) com tooltips explicativos.
+- **Modo Vertical Celular (9:16) & Capítulos do Vídeo**:
+  - Suporte nativo ao formato vertical 9:16 ideal para vídeos estilo Shorts, Reels e TikTok.
+  - Marcadores de capítulos navegáveis com tempo, título descritivo e switch de ativação rápida.
+- **Gráfico de Retenção VTurb com Player Centralizado**:
+  - Visualização de pico e curva de retenção por segundo com thumbnail e player sincronizado.
+  - Sub-abas de métricas detalhadas com taxas de engajamento e filtros temporais.
+
 ### 🔐 Autenticação e Segurança de Acesso
 - **Tela de Login Moderna**: Layout em 2 colunas com formulário de login (e-mail, senha com visualização toggle e loading) à esquerda e imagem/showcase com tema de alta conversão à direita.
 - **Conta Super Admin Automática**: Credenciais configuradas no `.env` (`SUPER_ADMIN_EMAIL` e `SUPER_ADMIN_PASSWORD`), sincronizadas automaticamente no banco de dados na inicialização do backend.
 - **Criptografia Memory-Hard (Argon2id)**: Senhas criptografadas com `argon2-cffi` utilizando 64MB de memória RAM por cálculo (`memory_cost=65536`), 3 iterações e 4 threads, inviabilizando ataques de força bruta com GPU/ASIC.
 - **Proteção de Rotas com Tokens JWT**: Todas as rotas administrativas exigem cabeçalho `Authorization: Bearer <token>`.
 - **Expiração Automática de Sessão (24h) e Logout Reativo**: Tokens JWT possuem tempo de vida configurável em horas (`JWT_ACCESS_TOKEN_EXPIRE_HOURS=24h`). Ao expirar, a aplicação detecta o vencimento, encerra a sessão de forma segura e redireciona para o login com toast informativo.
+- **Redefinição de Senha Segura via E-mail (Brevo)**:
+  - Fluxo completo "Esqueci minha senha" com geração de token único de uso único (expiração de 1 hora).
+  - Envio de e-mail transacional via API oficial do Brevo e tela dedicada de redefinição com validação de senha forte.
 - **Embeds e Telemetria Públicos**: As rotas `/videos/{id}` e `/videos/{id}/events` permanecem abertas sem autenticação para permitir a incorporação de players e registro de telemetria por visitantes externos.
 - **Credenciais de Desenvolvimento**:
   - **E-mail:** `admin@vturb.com`
@@ -44,6 +59,7 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
 ### 👥 Gestão de Usuários e Controle de Acesso
 - **Identificação do Usuário na Barra Lateral**: Card fixo no rodapé da Sidebar exibindo o avatar dinâmico com inicial, nome completo e e-mail do usuário logado.
 - **Restrição Rigorosa ao Super Admin**: O botão "Gestão de Usuário" na barra lateral e o acesso ao painel são restritos **exclusivamente** ao Super Admin oficial. Para administradores comuns e usuários normais, o botão não é exibido e qualquer tentativa de acesso via API retorna `HTTP 403 Forbidden`.
+- **Edição de Usuários e Redefinição Administrativa**: Modal para edição rápida de nome e e-mail de usuários cadastrados, além de botão para disparo de redefinição de senha com modal de confirmação.
 - **Abas Dedicadas com Contadores**: Separação clara entre **"Usuários Ativos"** e **"Convites Gerados"**, cada uma com contadores numéricos dinâmicos em tempo real.
 - **SuperAdmin Oficial Único**: Protegido e vinculado estritamente ao e-mail definido em `SUPER_ADMIN_EMAIL` na `.env`, exibido na lista com badge exclusivo `SUPERADMIN` e proteção contra exclusão via interface e backend (`HTTP 400`). Demais cadastros são automaticamente normalizados como administradores ou usuários padrão.
 - **Geração de Convites Personalizados**: Modal para criação de convites com perfil restrito a **Admin** ou **Usuário** (sem criação de convites para SuperAdmin) e tempo de expiração customizável (`1h`, `6h`, `24h`, `48h`, `7 dias`).

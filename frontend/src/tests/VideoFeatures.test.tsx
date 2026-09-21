@@ -421,7 +421,15 @@ describe('Mecânicas de Vídeo - Frontend', () => {
       />
     )
 
-    // O botão Turbo deve estar presente na barra lateral
+    // O botão Controles deve estar presente na barra lateral
+    const controlsBtn = screen.getByTestId('tab-btn-controls')
+    expect(controlsBtn).toBeInTheDocument()
+    expect(controlsBtn).toHaveTextContent(/Controles/i)
+
+    // Ao clicar em Controles, abre o submenu com Turbo
+    fireEvent.click(controlsBtn)
+
+    // O botão Turbo deve estar presente dentro de Controles
     const turboTabBtn = screen.getByTestId('tab-btn-turbo')
     expect(turboTabBtn).toBeInTheDocument()
     expect(turboTabBtn).toHaveTextContent(/Turbo/i)

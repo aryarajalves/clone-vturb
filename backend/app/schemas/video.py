@@ -48,11 +48,35 @@ class DomainProtectionSettings(BaseModel):
     allowed_domains: List[str] = Field(default_factory=list)
     anti_download: bool = True
 
+class PlayerControlsConfig(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    rewind_10s: bool = True
+    forward_10s: bool = True
+    volume: bool = True
+    fullscreen: bool = True
+    speed_control: bool = True
+    progress_bar: bool = True
+    video_time: bool = True
+
+class ChapterItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: str
+    time: str = "00:00"
+    seconds: float = 0.0
+    title: str = ""
+
+class ChaptersSettings(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    enabled: bool = False
+    items: List[ChapterItem] = Field(default_factory=list)
+
 class PlayerSettings(BaseModel):
     model_config = ConfigDict(extra="allow")
     primary_color: str = "#6366f1"
     autoplay: bool = False
     show_controls: bool = True
+    border_radius: Optional[int] = 0
+    aspect_ratio: Optional[str] = "16:9"
     cta_enabled: bool = False
     cta_time: int = 0
     cta_text: str = "Comprar Agora"
@@ -64,6 +88,8 @@ class PlayerSettings(BaseModel):
     pitch_delay: Optional[PitchDelaySettings] = None
     tracking_pixels: Optional[TrackingPixelsSettings] = None
     domain_protection: Optional[DomainProtectionSettings] = None
+    controls_config: Optional[PlayerControlsConfig] = None
+    chapters: Optional[ChaptersSettings] = None
 
 
 

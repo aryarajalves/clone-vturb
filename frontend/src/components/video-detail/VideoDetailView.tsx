@@ -4,6 +4,7 @@ import type { Video } from '../../types/video'
 import { getMediaUrl } from '../../services/api'
 import { VideoDetailSidebar, type ActiveTab } from './VideoDetailSidebar'
 import { VideoSettingsTab } from './VideoSettingsTab'
+import { VideoStylingTab } from './VideoStylingTab'
 import { VideoEmbedTab } from './VideoEmbedTab'
 import { VideoMetricsTab } from './VideoMetricsTab'
 import { VideoTurboTab } from './VideoTurboTab'
@@ -138,6 +139,14 @@ export const VideoDetailView: React.FC<VideoDetailViewProps> = ({
         >
           {activeTab === 'settings' && (
             <VideoSettingsTab
+              video={video}
+              onSave={onUpdateVideo}
+              showToast={showToast}
+            />
+          )}
+
+          {activeTab === 'styling' && (
+            <VideoStylingTab
               video={video}
               onSave={onUpdateVideo}
               showToast={showToast}

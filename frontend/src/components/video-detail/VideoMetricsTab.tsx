@@ -7,6 +7,7 @@ import {
   MetricsOverviewSection,
   HourlyPeakSection,
   RetentionFunnelSection,
+  VTurbRetentionChart,
 } from './metrics'
 
 interface VideoMetricsTabProps {
@@ -174,16 +175,25 @@ export const VideoMetricsTab: React.FC<VideoMetricsTabProps> = ({ video, showToa
         <>
           {/* Sub-Aba 1: Visão Geral */}
           <div style={{ display: activeSubTab === 'overview' ? 'block' : 'none' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <VTurbRetentionChart video={video} metrics={metrics} defaultTab="retention" />
+            </div>
             <MetricsOverviewSection metrics={metrics} />
           </div>
 
           {/* Sub-Aba 2: Horários & Pico (Gráfico VTurb) */}
           <div style={{ display: activeSubTab === 'hourly' ? 'block' : 'none' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <VTurbRetentionChart video={video} metrics={metrics} defaultTab="hourly" />
+            </div>
             <HourlyPeakSection metrics={metrics} />
           </div>
 
           {/* Sub-Aba 3: Funil & Retenção */}
           <div style={{ display: activeSubTab === 'retention' ? 'block' : 'none' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <VTurbRetentionChart video={video} metrics={metrics} defaultTab="retention" />
+            </div>
             <RetentionFunnelSection metrics={metrics} />
           </div>
         </>

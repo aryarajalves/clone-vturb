@@ -9,7 +9,7 @@ from sqlalchemy import func
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, hash_password, create_access_token
-from app.models.user import User, UserInvite, EmailVerificationCode
+from app.models.user import User, UserInvite, EmailVerificationCode, PasswordResetToken
 from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -18,6 +18,8 @@ from app.schemas.auth import (
     RegisterInviteRequest,
     SendVerificationCodeRequest,
     SendVerificationCodeResponse,
+    ValidateResetTokenResponse,
+    ResetPasswordRequest,
 )
 from app.api.deps import get_current_user
 from app.services.brevo import send_verification_code_email
@@ -322,5 +324,70 @@ def register_via_invite(payload: RegisterInviteRequest, db: Session = Depends(ge
         token_type="bearer",
         user=UserResponse.model_validate(new_user)
     )
+
+@router.get("/validate-reset-token", response_model=ValidateResetTokenResponse)
+def validate_reset_token(token: str, db: Session = Depends(get_db)):
+    """Valida se um token de redefinição de senha existe, é válido e não expirou."""
+    now = datetime.now(timezone.utc)
+    token_record = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token == token,
+        PasswordResetToken.is_used.is_(False),
+        PasswordResetToken.expires_at > now
+    ).first()
+
+    if not token_record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Link de redefinição de senha inválido ou expirado."
+        )
+
+    user = db.query(User).filter(User.id == token_record.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário associado a este token não foi encontrado."
+        )
+
+    return ValidateResetTokenResponse(
+        valid=True,
+        email=user.email,
+        name=user.name
+    )
+
+@router.post("/reset-password")
+def execute_password_reset(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Aplica a nova senha informada pelo usuário através de um token de redefinição válido."""
+    now = datetime.now(timezone.utc)
+    token_record = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token == payload.token,
+        PasswordResetToken.is_used.is_(False),
+        PasswordResetToken.expires_at > now
+    ).first()
+
+    if not token_record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Link de redefinição de senha inválido ou expirado."
+        )
+
+    validate_strong_password(payload.password)
+
+    user = db.query(User).filter(User.id == token_record.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário associado a este token não foi encontrado."
+        )
+
+    # Atualiza a senha com hash Argon2id
+    user.password_hash = hash_password(payload.password)
+    token_record.is_used = True
+    db.commit()
+
+    logger.info(f"Senha do usuário {user.email} redefinida com sucesso via token seguro.")
+    return {
+        "success": True,
+        "message": "Sua senha foi redefinida com sucesso! Você já pode entrar com sua nova senha."
+    }
 
 

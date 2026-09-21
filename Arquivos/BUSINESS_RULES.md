@@ -33,6 +33,7 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 - [x] Toda agregação respeita o identificador do vídeo.
 - [x] Filtros por data e período: suporte a Hoje (`today`), Ontem (`yesterday`), 7 Dias (`7d`), 30 Dias (`30d`), 1 Ano (`1y`), Todo o Período (`all`) e Intervalo Personalizado (De / Até).
 - [x] Gráfico estilo VTurb de distribuição horária (24 horas) com identificação automática do horário de pico de acessos/plays e consolidação por turnos (madrugada, manhã, tarde, noite).
+- [x] Gráfico Oficial VTurb de Retenção & Audiência: Gráfico com visual dark (#000000), imagem do vídeo centralizada na área gráfica com efeito de fusão, curva SVG verde neon suave, eixos Y (0% a 100%) e X com timestamps calculados pela duração do vídeo (ou distribuição horária 24h), linha vertical tracejada interativa (scrubber com ponto verde) e tooltip flutuante exibindo tempo/horário, audiência e retenção, além de sub-navegação por Dispositivos, Navegadores, Países e Origem do Tráfego.
 - [x] Todo cálculo de data, filtros de período (Hoje, Ontem, etc.) e distribuição horária (00h às 23h) é obrigatoriamente referenciado no Horário Oficial de Brasília (BRT / UTC-3, fuso America/Sao_Paulo).
 
 ---
@@ -56,7 +57,19 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 ---
 
 ## 6. Funcionalidades Avançadas do Player (Configuráveis por Vídeo na Barra Lateral)
-- [x] Cada recurso avançado pode ser ativado ou desativado individualmente nas configurações de cada vídeo específico, com switches independentes e acesso dedicado na barra lateral de edição (9 abas no total).
+- [x] Cada recurso avançado pode ser ativado ou desativado individualmente nas configurações de cada vídeo específico, com switches independentes e acesso dedicado na barra lateral de edição (organizados em 6 grupos/itens principais, com o submenu colapsável **Controles** agrupando 4 recursos dedicados).
+- [x] **Menu Expansível Controles na Barra Lateral**:
+  - A barra lateral de edição organiza as opções de controle do player sob o botão "Controles" com ícone dedicado e seta indicativa (chevron) que rotaciona ao expandir/recolher.
+  - Ao clicar no botão "Controles", o submenu se expande revelando os 4 botões de configuração com recuo e guia visual: **Turbo**, **Smart Autoplay**, **Player Flutuante** e **Conteúdo Oculto**.
+  - Cada botão do submenu mantém seu badge independente de status ("Ativo" / "Off") e ícone temático, destacando o botão ativo e mantendo o grupo Controles aberto automaticamente quando qualquer uma de suas sub-opções estiver selecionada.
+- [x] **Aba de Estilização e Controles Visuais do Player**:
+  - Acesso direto via botão "Estilização" na barra lateral de gerenciamento do vídeo.
+  - Exibe na parte central a visualização interativa em tempo real do próprio vídeo, com suporte tanto ao modo **Widescreen (16:9)** quanto ao **Modo Vertical para Celular (9:16)**.
+  - Slider para ajuste dinâmico de **Cantos Arredondados (0 a 20 px)** com badge numérico em tempo real.
+  - Painel escuro estilizado com controles: **Barra de progresso**, **Tempo do Vídeo** (indicando o tempo restante em contagem regressiva para acabar o vídeo), **Voltar 10s**, **Avançar 10s**, **Volume**, **Fullscreen** e **Controle de velocidade**.
+  - **Marcadores de Capítulos (`chapters`)**: Divisão do vídeo em múltiplos capítulos nomeados com timestamps (ex: `00:00`, `00:50`), renderizando uma barra de progresso segmentada interativa com navegação direta por clique.
+  - Configurações visuais adicionais: Paleta de cores de destaque com presets e seletor hexadecimal, formato do botão de play (Circular, Retangular, Quadrado, Minimalista) e tamanho do botão (Pequeno, Médio, Grande).
+  - Persistência das opções no objeto `player_settings` (`border_radius`, `aspect_ratio`, `controls_config` e `chapters`).
 - [x] **Smart Autoplay™**:
   - Inicia o vídeo de forma automática e mudo para contornar o bloqueio de autoplay dos navegadores modernos.
   - Exibe um banner/overlay chamativo com animação de som, texto customizável e botão com cor e texto personalizados para o espectador desmutar com 1 clique ("CLIQUE PARA OUVIR").
@@ -104,7 +117,16 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 - [x] **Abas e Paginação**:
   - Abas separadas para "Usuários Ativos" e "Convites Gerados" com contadores dinâmicos.
   - Paginação limitando a exibição em no máximo 20 itens por página em ambas as abas.
-  - Seleção múltipla por checkboxes individuais ou checkbox mestre, com exclusão em lote protegida por modal centralizado.
+  - Seleção múltipla por checkboxes individuais ou botão mestre ("Selecionar Todos" / "Desmarcar Todos").
+  - **Seleção Global Multi-Página**: O botão "Selecionar Todos" seleciona globalmente todos os itens elegíveis do sistema em ambas as abas (mesmo os que estão em outras páginas), mantendo os itens marcados ao navegar pela paginação e exibindo o contador total exato de itens selecionados para exclusão em lote.
+  - **Super Admin Sempre no Topo**: O Super Admin oficial permanece fixado no topo absoluto da listagem de usuários ativos em todas as visualizações e ordenações.
+  - **Filtro por Tipo de Usuário**: Dropdown interativo na barra de ações que permite filtrar a listagem por Todas as Funções, Super Admin, Administrador (Admin) ou Usuário, recalculando automaticamente a paginação e a contagem de registros exibidos.
+  - **Edição e Redefinição de Senha de Usuários Cadastrados**: 
+    - Administradores e Usuários comuns possuem botão de edição individual que abre o modal `EditUserModal` para alteração exclusiva de nome, e-mail e função (Admin ou Usuário), sem campo para o administrador definir senha manualmente pelo usuário.
+    - Ao lado do botão de editar informações na tabela de usuários (e também disponível no modal de edição), há o botão dedicado **"Redefinir senha"** (ícone de chave).
+    - O acionamento abre um popup de confirmação centralizado (backdrop escuro, fechamento exclusivo via botões) que, após confirmação, gera um token seguro com validade de 24 horas (`PasswordResetToken`), dispara e-mail com link de redefinição via Brevo e exibe o link direto com botão de cópia rápida para a área de transferência.
+    - O Super Admin é estritamente protegido, sem exibição dos botões de edição ou de redefinição de senha na interface e com bloqueio de segurança `HTTP 400` no backend caso haja tentativa de alteração.
+  - Exclusão em lote protegida por modal centralizado à prova de cliques acidentais.
 - [x] **Geração de Links de Convite**:
   - Links únicos protegidos por token (`secrets.token_urlsafe(32)`).
   - Opções de expiração em horas/dias: 1 hora, 6 horas, 24 horas, 48 horas e 7 dias.
@@ -130,5 +152,6 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 
 ---
 
-## 10. Persistência de Navegação
-- [x] Ao recarregar a página (F5 ou refresh do navegador), a aplicação restaura automaticamente a última página/aba carregada (armazenada em `localStorage` com as chaves `vturb_current_tab`, `vturb_user_tab` e `vturb_backup_tab`), garantindo que o usuário nunca perca seu contexto de trabalho.
+## 10. Persistência de Navegação e Tela Inicial
+- [x] **Tela Inicial Obrigatória no Login**: Toda vez que o usuário realizar login no sistema (primeiro acesso ou nova autenticação após logout/expiração), a aplicação é direcionada invariavelmente para a tela inicial **"Meus vídeos"**, garantindo consistência no ponto de partida do fluxo de trabalho.
+- [x] Ao recarregar a página (F5 ou refresh do navegador) durante uma sessão já autenticada e ativa, a aplicação restaura automaticamente a última página/aba carregada (armazenada em `localStorage` com as chaves `vturb_current_tab`, `vturb_user_tab` e `vturb_backup_tab`), garantindo que o usuário nunca perca seu contexto de trabalho.

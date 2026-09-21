@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   Trash2,
   Copy,
@@ -40,19 +40,23 @@ export const InvitesTable: React.FC<InvitesTableProps> = ({
     return invites.slice(start, start + ITEMS_PER_PAGE)
   }, [invites, safeCurrentPage])
 
-  const allCurrentSelected =
-    paginatedInvites.length > 0 &&
-    paginatedInvites.every((i) => selectedIds.includes(i.id))
+  // Todos os convites do sistema (independente de página)
+  const allSelected =
+    invites.length > 0 &&
+    invites.every((i) => selectedIds.includes(i.id))
 
   const handleToggleSelectAll = () => {
-    if (allCurrentSelected) {
-      const currentIds = new Set(paginatedInvites.map((i) => i.id))
-      setSelectedIds((prev) => prev.filter((id) => !currentIds.has(id)))
+    if (allSelected) {
+      setSelectedIds([])
     } else {
-      const toAdd = paginatedInvites.map((i) => i.id)
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...toAdd])))
+      setSelectedIds(invites.map((i) => i.id))
     }
   }
+
+  // Sincroniza seleção quando a lista de convites é modificada
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => invites.some((i) => i.id === id)))
+  }, [invites])
 
   const handleToggleSelectInvite = (inviteId: string) => {
     setSelectedIds((prev) =>
@@ -145,12 +149,12 @@ export const InvitesTable: React.FC<InvitesTableProps> = ({
               cursor: 'pointer',
             }}
           >
-            {allCurrentSelected ? (
+            {allSelected ? (
               <CheckSquare size={16} color="#0284c7" />
             ) : (
               <Square size={16} color="#64748b" />
             )}
-            <span>{allCurrentSelected ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
+            <span>{allSelected ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
           </button>
 
           {selectedIds.length > 0 && (

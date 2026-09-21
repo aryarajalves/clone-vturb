@@ -84,3 +84,33 @@ def test_storage_service_upload_to_backblaze_direct_endpoint():
         # Sem CDN, usa o endpoint direto: https://s3.us-east-005.backblazeb2.com/meu-bucket-vturb/...
         assert result_url.startswith("https://s3.us-east-005.backblazeb2.com/meu-bucket-vturb/")
         assert result_url.endswith(".jpg")
+
+
+def test_storage_service_upload_sanitizes_b2_s3_file_segment():
+    mock_s3 = MagicMock()
+
+    # Simula configuração errônea com /file/ em endpoint S3 do Backblaze
+    with patch.object(settings, "BACKBLAZE_KEY_ID", "key123"), \
+         patch.object(settings, "BACKBLAZE_APPLICATION_KEY", "secret123"), \
+         patch.object(settings, "BACKBLAZE_BUCKET_NAME", "zap-voice"), \
+         patch.object(settings, "BACKBLAZE_ENDPOINT_URL", "https://s3.us-west-004.backblazeb2.com"), \
+         patch.object(settings, "BACKBLAZE_CDN_URL", "https://s3.us-west-004.backblazeb2.com/file/zap-voice"):
+
+        service = StorageService()
+        assert service.is_backblaze_configured()
+
+        service._s3_client = mock_s3
+
+        dummy_file = io.BytesIO(b"conteudo video")
+        result_url = service.upload_file(
+            file_obj=dummy_file,
+            original_filename="video_teste.mp4",
+            content_type="video/mp4"
+        )
+
+        mock_s3.upload_fileobj.assert_called_once()
+        # Garante que o segmento /file/ foi removido para não quebrar na API S3 do Backblaze
+        assert result_url.startswith("https://s3.us-west-004.backblazeb2.com/zap-voice/")
+        assert not result_url.startswith("https://s3.us-west-004.backblazeb2.com/file/")
+        assert result_url.endswith(".mp4")
+

@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import shutil
 import uuid
 import mimetypes
@@ -93,6 +94,8 @@ class StorageService:
                 # Monta a URL pública (CDN customizada ou Endpoint B2)
                 if settings.BACKBLAZE_CDN_URL:
                     base_url = settings.BACKBLAZE_CDN_URL.rstrip("/")
+                    # Corrige se a URL da CDN contiver /file/ em endpoint S3 (s3.*.backblazeb2.com/file/)
+                    base_url = re.sub(r"(https?://s3\.[^/]+\.backblazeb2\.com)/file", r"\1", base_url)
                     public_url = f"{base_url}/{unique_key}"
                 else:
                     endpoint = settings.BACKBLAZE_ENDPOINT_URL.rstrip("/")

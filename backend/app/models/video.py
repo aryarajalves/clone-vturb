@@ -22,7 +22,14 @@ class Video(Base):
         "cta_enabled": False,
         "cta_time": 0,
         "cta_text": "Comprar Agora",
-        "cta_link": "https://example.com"
+        "cta_link": "https://example.com",
+        "controls_config": {
+            "rewind_10s": True,
+            "forward_10s": True,
+            "volume": True,
+            "fullscreen": True,
+            "speed_control": True
+        }
     })
     created_at = Column(DateTime(timezone=True), default=get_utc_now)
     updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)

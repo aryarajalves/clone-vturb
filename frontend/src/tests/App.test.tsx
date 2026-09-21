@@ -202,4 +202,53 @@ describe('App Dashboard VTurb Layout', () => {
     expect(screen.getByTestId('sidebar')).toBeInTheDocument()
     expect(screen.getByTestId('btn-novo-video')).toBeInTheDocument()
   })
+
+  it('redireciona invariavelmente para a tela inicial Meus vídeos ao realizar login', async () => {
+    // Simula estado deslogado com localStorage apontando para outra aba anterior
+    localStorage.removeItem('vturb_access_token')
+    localStorage.setItem('vturb_current_tab', 'users')
+
+    global.fetch = vi.fn().mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString()
+      if (urlStr.includes('/auth/login')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ access_token: 'new-token', user: mockUser }),
+        })
+      }
+      if (urlStr.includes('/auth/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockUser),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      })
+    })
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    // Tela de login visível
+    expect(screen.getByTestId('login-view-container')).toBeInTheDocument()
+
+    // Preenche credenciais e faz login
+    fireEvent.change(screen.getByTestId('login-email-input'), { target: { value: 'admin@vturb.com' } })
+    fireEvent.change(screen.getByTestId('login-password-input'), { target: { value: 'Admin123456!' } })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login-submit-btn'))
+    })
+
+    // Após autenticação, a aba ativa deve ser obrigatoriamente 'Meus vídeos'
+    await waitFor(() => {
+      expect(screen.getByTestId('sidebar')).toBeInTheDocument()
+      expect(screen.getByTestId('page-title')).toHaveTextContent('Meus vídeos')
+      expect(screen.getByTestId('nav-meus-videos')).toHaveStyle({ backgroundColor: '#e0f2fe' })
+    })
+    expect(localStorage.getItem('vturb_current_tab')).toBe('videos')
+  })
 })

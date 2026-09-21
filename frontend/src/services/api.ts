@@ -224,7 +224,8 @@ export async function uploadFile(file: File): Promise<{ filename: string; url: s
 export function getMediaUrl(url?: string): string {
   if (!url) return ''
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
-    return url
+    // Corrige URL do Backblaze B2 quando montada erroneamente com /file/ no endpoint S3
+    return url.replace(/(https?:\/\/s3\.[^/]+\.backblazeb2\.com)\/file\//, '$1/')
   }
   return `${API_BASE}${url}`
 }
@@ -250,6 +251,83 @@ export async function deleteUser(userId: string): Promise<{ detail: string }> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || 'Falha ao excluir usuário.')
+  }
+  return res.json()
+}
+
+export interface UpdateUserData {
+  name?: string
+  email?: string
+  role?: string
+  password?: string
+}
+
+export async function updateUser(userId: string, data: UpdateUserData): Promise<User> {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify(data),
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao atualizar dados do usuário.')
+  }
+  return res.json()
+}
+
+export interface ResetPasswordTriggerResult {
+  success: boolean
+  message: string
+  token: string
+  reset_url: string
+}
+
+export async function triggerUserPasswordReset(userId: string): Promise<ResetPasswordTriggerResult> {
+  const res = await fetch(`${API_BASE}/users/${userId}/reset-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao solicitar redefinição de senha.')
+  }
+  return res.json()
+}
+
+export interface ValidateResetTokenResult {
+  valid: boolean
+  email: string
+  name?: string
+}
+
+export async function validateResetToken(token: string): Promise<ValidateResetTokenResult> {
+  const res = await fetch(`${API_BASE}/auth/validate-reset-token?token=${encodeURIComponent(token)}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Link de redefinição de senha inválido ou expirado.')
+  }
+  return res.json()
+}
+
+export async function executePasswordReset(token: string, password: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Falha ao redefinir a senha.')
   }
   return res.json()
 }

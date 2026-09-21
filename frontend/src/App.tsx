@@ -20,6 +20,7 @@ import { VideoCreateView } from './components/video-create/VideoCreateView'
 import { LoginView } from './components/auth/LoginView'
 import { UserManagementView } from './components/users/UserManagementView'
 import { AcceptInviteView } from './components/auth/AcceptInviteView'
+import { ResetPasswordView } from './components/auth/ResetPasswordView'
 import { BackupManagementView } from './components/backup/BackupManagementView'
 import './App.css'
 
@@ -41,6 +42,11 @@ function App() {
     (window.location.pathname.startsWith('/invite/')
       ? window.location.pathname.replace('/invite/', '')
       : null)
+
+  const resetToken =
+    (window.location.pathname.startsWith('/reset-password')
+      ? searchParams.get('token') || window.location.pathname.replace('/reset-password/', '').replace('/reset-password', '')
+      : null) || searchParams.get('reset-password')
 
   type MainTab = 'videos' | 'users' | 'backups'
 
@@ -87,6 +93,22 @@ function App() {
     )
   }
 
+  // Página pública de redefinição de senha
+  if (resetToken) {
+    return (
+      <ResetPasswordView
+        token={resetToken}
+        onSuccess={() => {
+          window.location.href = '/'
+        }}
+        onCancel={() => {
+          window.location.href = '/'
+        }}
+        showToast={showToast}
+      />
+    )
+  }
+
   const loadVideos = useCallback(async () => {
     try {
       setLoading(true)
@@ -104,6 +126,8 @@ function App() {
     const checkAuth = async () => {
       const token = getAuthToken()
       if (!token) {
+        setCurrentTab('videos')
+        localStorage.setItem('vturb_current_tab', 'videos')
         setIsCheckingAuth(false)
         return
       }
@@ -129,6 +153,8 @@ function App() {
       setCurrentUser(null)
       setSelectedVideo(null)
       setIsCreatingVideo(false)
+      setCurrentTab('videos')
+      localStorage.setItem('vturb_current_tab', 'videos')
       setVideos([])
       showToast('Sua sessão expirou (limite de 24 horas). Por favor, faça login novamente.')
     }
@@ -141,6 +167,11 @@ function App() {
 
   const handleLoginSuccess = async (user: User) => {
     setCurrentUser(user)
+    // Redireciona sempre para a tela inicial 'Meus vídeos' ao autenticar
+    setCurrentTab('videos')
+    localStorage.setItem('vturb_current_tab', 'videos')
+    setSelectedVideo(null)
+    setIsCreatingVideo(false)
     showToast(`Bem-vindo, ${user.email}!`)
     await loadVideos()
   }
@@ -155,7 +186,8 @@ function App() {
 
   const handleLogout = () => {
     removeAuthToken()
-    localStorage.removeItem('vturb_current_tab')
+    setCurrentTab('videos')
+    localStorage.setItem('vturb_current_tab', 'videos')
     setCurrentUser(null)
     setSelectedVideo(null)
     setIsCreatingVideo(false)

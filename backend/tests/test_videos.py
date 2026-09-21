@@ -416,6 +416,55 @@ def test_advanced_player_settings_persistence():
     # Limpeza
     client.delete(f"/videos/{video_id}")
 
+def test_video_controls_styling_config():
+    """Valida salvamento e recuperação das opções visuais de controles do player (Voltar 10s, Avançar 10s, etc.)."""
+    create_res = client.post("/videos/", json={
+        "title": "Vídeo Estilização Controles",
+        "video_url": "https://cdn.exemplo.com/estilizacao.mp4",
+        "duration": 180.0,
+        "player_settings": {
+            "primary_color": "#10b981",
+            "controls_config": {
+                "rewind_10s": True,
+                "forward_10s": False,
+                "volume": True,
+                "fullscreen": True,
+                "speed_control": False
+            }
+        }
+    })
+    assert create_res.status_code == 201
+    video = create_res.json()
+    video_id = video["id"]
+    cfg = video["player_settings"].get("controls_config", {})
+    assert cfg.get("rewind_10s") is True
+    assert cfg.get("forward_10s") is False
+    assert cfg.get("speed_control") is False
+
+    # Atualiza opções
+    update_res = client.put(f"/videos/{video_id}", json={
+        "player_settings": {
+            **video["player_settings"],
+            "controls_config": {
+                "rewind_10s": False,
+                "forward_10s": True,
+                "volume": True,
+                "fullscreen": False,
+                "speed_control": True
+            }
+        }
+    })
+    assert update_res.status_code == 200
+    updated_cfg = update_res.json()["player_settings"]["controls_config"]
+    assert updated_cfg["rewind_10s"] is False
+    assert updated_cfg["forward_10s"] is True
+    assert updated_cfg["fullscreen"] is False
+    assert updated_cfg["speed_control"] is True
+
+    # Limpeza
+    client.delete(f"/videos/{video_id}")
+
+
 
 
 

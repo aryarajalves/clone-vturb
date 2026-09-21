@@ -8,14 +8,18 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.api.deps import get_current_user
-from app.models.user import User, UserInvite
+from app.core.security import hash_password
+from app.models.user import User, UserInvite, PasswordResetToken
 from app.schemas.auth import (
     UserResponse,
     CreateInviteRequest,
     InviteResponse,
     BulkDeleteRequest,
     BulkDeleteResponse,
+    UpdateUserRequest,
+    ResetPasswordTriggerResponse,
 )
+from app.services.brevo import send_password_reset_email
 
 logger = logging.getLogger("projetovturb.users")
 router = APIRouter(prefix="/users", tags=["Gestão de Usuários"])
@@ -40,9 +44,12 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_super_admin)
 ):
-    """Lista todos os usuários cadastrados no sistema, garantindo um único SuperAdmin oficial."""
-    users = db.query(User).order_by(User.created_at.asc()).all()
+    """Lista todos os usuários cadastrados no sistema, garantindo um único SuperAdmin oficial sempre no topo."""
+    users = db.query(User).order_by(User.created_at.desc()).all()
     official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+
+    super_admin_user = None
+    common_users = []
 
     for u in users:
         if u.email.strip().lower() == official_email:
@@ -50,11 +57,132 @@ def list_users(
             u.is_super_admin = True
             if not u.name:
                 u.name = "Super Admin"
+            super_admin_user = u
         else:
             if u.is_super_admin or u.role == "super_admin":
                 u.is_super_admin = False
                 u.role = "admin"
-    return users
+            common_users.append(u)
+
+    if super_admin_user:
+        return [super_admin_user] + common_users
+    return common_users
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: str,
+    payload: UpdateUserRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin)
+):
+    """Edita dados de um usuário (nome, e-mail, função ou senha). O SuperAdmin não pode ser editado."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não encontrado."
+        )
+
+    official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+    if user.is_super_admin or user.role == "super_admin" or user.email.strip().lower() == official_email:
+        logger.warning(f"Tentativa de editar Super Admin ({user.email}) bloqueada.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O Super Admin oficial não pode ser editado."
+        )
+
+    if payload.role is not None:
+        role_clean = payload.role.strip().lower()
+        if role_clean == "super_admin":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Não é permitido atribuir a função Super Admin."
+            )
+        if role_clean not in ["admin", "user"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Função inválida. Escolha entre 'admin' ou 'user'."
+            )
+        user.role = role_clean
+
+    if payload.name is not None:
+        user.name = payload.name.strip() or None
+
+    if payload.email is not None:
+        email_clean = payload.email.strip().lower()
+        if email_clean != user.email.lower():
+            existing = db.query(User).filter(User.email.ilike(email_clean), User.id != user.id).first()
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Este endereço de e-mail já está sendo utilizado por outro usuário."
+                )
+            user.email = email_clean
+
+    if payload.password is not None and payload.password.strip():
+        if len(payload.password.strip()) < 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A nova senha deve ter no mínimo 8 caracteres."
+            )
+        user.password_hash = hash_password(payload.password.strip())
+
+    db.commit()
+    db.refresh(user)
+    logger.info(f"Usuário {user.email} atualizado com sucesso pelo Super Admin {current_user.email}")
+    return user
+
+@router.post("/{user_id}/reset-password", response_model=ResetPasswordTriggerResponse)
+def trigger_user_password_reset(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin)
+):
+    """Inicia o processo de redefinição de senha para um usuário pelo Super Admin."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não encontrado."
+        )
+
+    official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+    if user.is_super_admin or user.role == "super_admin" or user.email.strip().lower() == official_email:
+        logger.warning(f"Tentativa de redefinir senha do Super Admin ({user.email}) bloqueada.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não é permitido redefinir a senha do Super Admin oficial por este método."
+        )
+
+    # Invalida tokens anteriores pendentes deste usuário
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.is_used.is_(False)
+    ).update({"is_used": True})
+
+    # Cria novo token seguro
+    reset_token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+
+    token_record = PasswordResetToken(
+        user_id=user.id,
+        token=reset_token,
+        expires_at=expires_at,
+        is_used=False
+    )
+    db.add(token_record)
+    db.commit()
+
+    reset_url = f"/reset-password?token={reset_token}"
+    send_password_reset_email(to_email=user.email, reset_url=reset_url, to_name=user.name)
+
+    logger.info(f"Redefinição de senha solicitada para {user.email} pelo Super Admin {current_user.email}")
+    return ResetPasswordTriggerResponse(
+        success=True,
+        message=f"Instruções de redefinição de senha geradas e enviadas para {user.email}.",
+        token=reset_token,
+        reset_url=reset_url
+    )
 
 @router.delete("/{user_id}")
 def delete_user(
