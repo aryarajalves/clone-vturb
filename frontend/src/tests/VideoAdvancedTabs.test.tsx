@@ -431,4 +431,105 @@ describe('Mecânicas Avançadas do Vídeo - Configurações e Player', () => {
       expect(screen.getByText('Reprodução Não Autorizada')).toBeInTheDocument()
     })
   })
+
+  it('VideoSmartAutoplayTab: permite alternar para o modo Autoplay Direto com som e salva com sucesso', async () => {
+    const onSaveMock = vi.fn()
+    const showToastMock = vi.fn()
+
+    global.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            ...mockVideo,
+            player_settings: {
+              ...mockVideo.player_settings,
+              smart_autoplay: {
+                enabled: true,
+                mode: 'direct',
+              },
+            },
+          }),
+      })
+    )
+
+    render(
+      <VideoSmartAutoplayTab
+        video={mockVideo}
+        onSave={onSaveMock}
+        showToast={showToastMock}
+      />
+    )
+
+    // Ativa switch
+    const toggleBtn = screen.getByTestId('smart-autoplay-toggle')
+    fireEvent.click(toggleBtn)
+
+    // Clica no botão de modo Autoplay Direto com Som
+    const directModeBtn = screen.getByTestId('autoplay-mode-direct')
+    fireEvent.click(directModeBtn)
+
+    // Verifica que exibiu o formulário de personalização do badge e a prévia do banner
+    expect(screen.getByTestId('direct-autoplay-form')).toBeInTheDocument()
+    expect(screen.getByTestId('direct-autoplay-preview-badge')).toBeInTheDocument()
+    expect(screen.queryByTestId('smart-autoplay-card')).not.toBeInTheDocument()
+
+    // Edita o texto do badge e texto do botão no formulário do modo direto
+    const textInput = screen.getByTestId('direct-autoplay-text-input')
+    fireEvent.change(textInput, { target: { value: 'Atenção! Vídeo sem áudio' } })
+
+    const btnTextInput = screen.getByTestId('direct-autoplay-button-text-input')
+    fireEvent.change(btnTextInput, { target: { value: 'LIGAR ÁUDIO' } })
+
+    // Salva configurações
+    const saveBtn = screen.getByTestId('smart-autoplay-save-btn')
+    await act(async () => {
+      fireEvent.click(saveBtn)
+    })
+
+    await waitFor(() => {
+      expect(onSaveMock).toHaveBeenCalled()
+      expect(showToastMock).toHaveBeenCalledWith(
+        expect.stringContaining('Autoplay Direto com som ativado')
+      )
+    })
+  })
+
+  it('EmbedPlayer: inicia diretamente com som quando mode direct está ativado, sem overlay na frente', async () => {
+    const playMock = vi.fn().mockResolvedValue(undefined)
+    window.HTMLMediaElement.prototype.play = playMock
+
+    const videoWithDirectAutoplay: Video = {
+      ...mockVideo,
+      player_settings: {
+        ...mockVideo.player_settings,
+        smart_autoplay: {
+          enabled: true,
+          mode: 'direct',
+        },
+      },
+    }
+
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/videos/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(videoWithDirectAutoplay),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: 'ok' }),
+      })
+    })
+
+    render(<EmbedPlayer videoId={videoWithDirectAutoplay.id} />)
+
+    await waitFor(() => {
+      // Nenhum overlay do Smart Autoplay ou big play overlay deve aparecer na frente
+      expect(screen.queryByTestId('smart-autoplay-overlay')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('big-play-overlay')).not.toBeInTheDocument()
+      expect(playMock).toHaveBeenCalled()
+    })
+  })
 })

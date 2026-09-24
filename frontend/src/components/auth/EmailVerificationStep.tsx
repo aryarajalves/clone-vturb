@@ -52,35 +52,85 @@ export const EmailVerificationStep: React.FC<EmailVerificationStepProps> = ({
   }
 
   return (
-    <div className="space-y-6 animate-fade-in" data-testid="email-verification-step">
-      <div className="text-center space-y-2">
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 shadow-lg shadow-emerald-950/20">
-          <Mail className="w-7 h-7" />
+    <div data-testid="email-verification-step">
+      {/* Ícone e Cabeçalho de Verificação */}
+      <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+        <div
+          style={{
+            width: '56px',
+            height: '56px',
+            margin: '0 auto 1rem',
+            borderRadius: '16px',
+            backgroundColor: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#059669',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)',
+          }}
+        >
+          <Mail size={28} />
         </div>
-        <h3 className="text-xl font-bold text-slate-900">Verifique seu e-mail</h3>
-        <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
+        <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.35rem 0' }}>
+          Verifique seu e-mail
+        </h2>
+        <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 0.75rem 0', lineHeight: 1.4 }}>
           Enviamos um código de segurança de 6 dígitos para o endereço:
         </p>
-        <div className="inline-block px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800">
+        <div
+          style={{
+            display: 'inline-block',
+            padding: '0.35rem 0.85rem',
+            backgroundColor: '#f1f5f9',
+            border: '1px solid #cbd5e1',
+            borderRadius: '8px',
+            fontSize: '0.825rem',
+            fontWeight: 600,
+            color: '#1e293b',
+          }}
+        >
           {email}
         </div>
       </div>
 
+      {/* Banner de Erro */}
       {errorMessage && (
         <div
           data-testid="verification-error-message"
-          className="flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 leading-relaxed"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.625rem',
+            padding: '0.85rem 1rem',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '10px',
+            color: '#b91c1c',
+            fontSize: '0.85rem',
+            marginBottom: '1.25rem',
+            lineHeight: 1.4,
+          }}
         >
-          <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+          <AlertCircle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: '1.5rem' }}>
           <label
             htmlFor="verification-code-input"
-            className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2 text-center"
+            style={{
+              display: 'block',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              color: '#475569',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '0.5rem',
+              textAlign: 'center',
+            }}
           >
             Digite o código de 6 dígitos
           </label>
@@ -94,10 +144,25 @@ export const EmailVerificationStep: React.FC<EmailVerificationStepProps> = ({
             value={code}
             onChange={handleCodeChange}
             placeholder="000000"
-            className="w-full text-center text-3xl font-mono font-bold tracking-[0.4em] px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-slate-800 placeholder:text-slate-300 placeholder:tracking-[0.4em]"
             autoFocus
+            style={{
+              width: '100%',
+              textAlign: 'center',
+              fontSize: '1.85rem',
+              fontFamily: 'monospace',
+              fontWeight: 700,
+              letterSpacing: '0.4em',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              border: '2px solid #cbd5e1',
+              outline: 'none',
+              color: '#0f172a',
+              backgroundColor: '#ffffff',
+              boxSizing: 'border-box',
+              transition: 'border-color 0.2s',
+            }}
           />
-          <p className="text-[11px] text-slate-600 text-center mt-2">
+          <p style={{ fontSize: '0.75rem', color: '#64748b', textAlign: 'center', marginTop: '0.5rem' }}>
             O código expira em 15 minutos. Verifique também a pasta de spam.
           </p>
         </div>
@@ -106,30 +171,63 @@ export const EmailVerificationStep: React.FC<EmailVerificationStepProps> = ({
           type="submit"
           data-testid="confirm-verification-button"
           disabled={code.trim().length !== 6 || submitting}
-          className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            padding: '0.85rem 1.25rem',
+            backgroundColor: code.trim().length !== 6 || submitting ? '#94a3b8' : '#059669',
+            color: '#ffffff',
+            borderRadius: '10px',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            border: 'none',
+            cursor: code.trim().length !== 6 || submitting ? 'not-allowed' : 'pointer',
+            boxShadow: code.trim().length !== 6 || submitting ? 'none' : '0 4px 12px rgba(5, 150, 105, 0.3)',
+            marginBottom: '1.25rem',
+            transition: 'all 0.2s',
+          }}
         >
           {submitting ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Validando e criando conta...</span>
-            </>
+            <span>Validando e criando conta...</span>
           ) : (
             <>
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 size={18} />
               <span>Confirmar e Criar Conta</span>
             </>
           )}
         </button>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: '1rem',
+            borderTop: '1px solid #f1f5f9',
+            fontSize: '0.85rem',
+          }}
+        >
           <button
             type="button"
             onClick={onBack}
             disabled={submitting}
-            className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-medium transition-colors"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              color: '#64748b',
+              background: 'none',
+              border: 'none',
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              padding: 0,
+            }}
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Corrigir e-mail
+            <ArrowLeft size={16} />
+            <span>Corrigir e-mail</span>
           </button>
 
           <button
@@ -137,10 +235,20 @@ export const EmailVerificationStep: React.FC<EmailVerificationStepProps> = ({
             data-testid="resend-code-button"
             onClick={handleResendClick}
             disabled={!canResend || resending || submitting}
-            className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 disabled:text-slate-400 font-semibold transition-colors disabled:cursor-not-allowed"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              color: !canResend || resending || submitting ? '#94a3b8' : '#059669',
+              background: 'none',
+              border: 'none',
+              cursor: !canResend || resending || submitting ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              padding: 0,
+            }}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${resending ? 'animate-spin' : ''}`} />
-            {canResend ? 'Reenviar código' : `Reenviar em ${countdown}s`}
+            <RefreshCw size={15} />
+            <span>{canResend ? 'Reenviar código' : `Reenviar em ${countdown}s`}</span>
           </button>
         </div>
       </form>

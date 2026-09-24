@@ -66,6 +66,19 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast }
       if (typeof window.ttq === 'function' && typeof window.ttq.track === 'function') window.ttq.track(evt, { video_id: e.data.videoId });
     }
   });
+  // Listener para desbloquear áudio de imediato na menor interação
+  var unlocked = false;
+  function notifyIframe() {
+    if (unlocked) return;
+    unlocked = true;
+    var ifr = document.querySelector('iframe[src*="${video.id}"]');
+    if (ifr && ifr.contentWindow) {
+      try { ifr.contentWindow.postMessage({ type: 'VTURB_PARENT_INTERACTION' }, '*'); } catch(e) {}
+    }
+  }
+  ['click', 'touchstart', 'scroll', 'keydown'].forEach(function(evt) {
+    window.addEventListener(evt, notifyIframe, { once: true, passive: true });
+  });
   try {
     if (localStorage.getItem('vturb_pitch_${video.id}') === '1') {
       var sel = '${video.player_settings?.pitch_delay?.target_css_selector || '.delay-pitch'}';
@@ -80,21 +93,21 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast }
 
   if (heightPreset === 'custom' && resolvedHeight) {
     iframeCode = `<div style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
-  <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay; fullscreen" allowfullscreen></iframe>
+  <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
 </div>${listenerScript}`
     scriptCode = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
-  <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay; fullscreen"></iframe>
+  <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
 </div>${listenerScript}`
   } else {
     const pTop = paddingTopMap[heightPreset] || '56.25%'
     iframeCode = `<div style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
   <div style="position:relative;width:100%;padding-top:${pTop};">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
   </div>
 </div>${listenerScript}`
     scriptCode = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
   <div style="position:relative;width:100%;padding-top:${pTop};">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay; fullscreen"></iframe>
+    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
   </div>
 </div>${listenerScript}`
   }

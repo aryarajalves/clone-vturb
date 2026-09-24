@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Play, Volume2, VolumeX, ExternalLink, ShieldAlert, X } from 'lucide-react'
+import { Volume2, VolumeX, ExternalLink, ShieldAlert, X } from 'lucide-react'
 import type { Video } from '../types/video'
 import { fetchVideo, sendTelemetryEvent, getMediaUrl } from '../services/api'
 import { SmartAutoplayOverlay } from './SmartAutoplayOverlay'
+import { BigPlayOverlay } from './BigPlayOverlay'
+import { DirectUnmuteBanner } from './DirectUnmuteBanner'
+import { triggerTrackingPixels } from '../utils/embedTracking'
 
 interface EmbedPlayerProps {
   videoId: string
@@ -17,6 +20,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
   const [showCta, setShowCta] = useState(false)
   const [domainBlocked, setDomainBlocked] = useState(false)
   const [isSmartAutoplaying, setIsSmartAutoplaying] = useState(false)
+  const [showDirectUnmuteBanner, setShowDirectUnmuteBanner] = useState(false)
   const [isFloating, setIsFloating] = useState(false)
   const [floatingDismissed, setFloatingDismissed] = useState(false)
 
@@ -107,26 +111,96 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     }
   }, [video])
 
-  // Inicializa Smart Autoplay se ativado
+  // Inicializa Autoplay (Smart Autoplay com chamada ou Autoplay Direto com som)
   useEffect(() => {
     if (!video) return
     const smart = video.player_settings?.smart_autoplay
     if (smart?.enabled) {
-      setIsSmartAutoplaying(true)
-      setIsMuted(true)
-      if (videoRef.current) {
-        videoRef.current.muted = true
-        try {
-          const p = videoRef.current.play()
-          if (p && typeof p.then === 'function') {
-            p.then(() => setIsPlaying(true)).catch(() => {})
-          } else {
-            setIsPlaying(true)
+      const isDirect = smart.mode === 'direct'
+      if (isDirect) {
+        // Modo Autoplay Direto com Som (sem botões ou overlays visuais na frente)
+        setIsSmartAutoplaying(false)
+        setIsMuted(false)
+        if (videoRef.current) {
+          videoRef.current.muted = false
+          videoRef.current.volume = 1.0
+
+          const attemptPlay = () => {
+            if (!videoRef.current) return
+            const p = videoRef.current.play()
+            if (p && typeof p.then === 'function') {
+              p.then(() => {
+                setIsPlaying(true)
+                sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+              }).catch(() => {
+                // Se o navegador bloquear áudio sem interação prévia (política MEI),
+                // inicia tocando mudo e exibe o banner informativo com botão para desmutar
+                if (videoRef.current) {
+                  videoRef.current.muted = true
+                  setIsMuted(true)
+                  setShowDirectUnmuteBanner(true)
+                  videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
+
+                  // Desmutar imediatamente ao toque, clique ou interação direta
+                  const unlockAudio = () => {
+                    if (videoRef.current) {
+                      videoRef.current.muted = false
+                      videoRef.current.volume = 1.0
+                      setIsMuted(false)
+                      setShowDirectUnmuteBanner(false)
+                    }
+                    cleanupListeners()
+                  }
+
+                  const handleParentMsg = (e: MessageEvent) => {
+                    if (e.data?.type === 'VTURB_PARENT_INTERACTION') {
+                      unlockAudio()
+                    }
+                  }
+
+                  const cleanupListeners = () => {
+                    ;['click', 'touchstart', 'scroll', 'keydown', 'pointerdown'].forEach((evt) => {
+                      window.removeEventListener(evt, unlockAudio)
+                      document.removeEventListener(evt, unlockAudio)
+                    })
+                    window.removeEventListener('message', handleParentMsg)
+                  }
+
+                  ;['click', 'touchstart', 'scroll', 'keydown', 'pointerdown'].forEach((evt) => {
+                    window.addEventListener(evt, unlockAudio, { once: true, passive: true })
+                    document.addEventListener(evt, unlockAudio, { once: true, passive: true })
+                  })
+                  window.addEventListener('message', handleParentMsg, { once: true })
+                }
+              })
+            } else {
+              setIsPlaying(true)
+              sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+            }
           }
-        } catch {}
+
+          try {
+            attemptPlay()
+          } catch {}
+        }
+      } else {
+        // Modo Smart Autoplay Padrão (com chamada animada para desmutar)
+        setIsSmartAutoplaying(true)
+        setIsMuted(true)
+        if (videoRef.current) {
+          videoRef.current.muted = true
+          try {
+            const p = videoRef.current.play()
+            if (p && typeof p.then === 'function') {
+              p.then(() => setIsPlaying(true)).catch(() => {})
+            } else {
+              setIsPlaying(true)
+            }
+          } catch {}
+        }
       }
     }
-  }, [video])
+  }, [video, videoId, visitorId])
 
   // Observer para Player Flutuante (Picture-in-Picture)
   useEffect(() => {
@@ -148,37 +222,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
   const dispatchPixelEvent = (triggerKey: 'percent_25' | 'percent_50' | 'percent_75' | 'percent_100' | 'pitch') => {
     if (pixelEventsSent.current[triggerKey]) return
     pixelEventsSent.current[triggerKey] = true
-
-    const tracking = video?.player_settings?.tracking_pixels
-    if (!tracking?.enabled) return
-
-    const eventConfig = tracking.events?.find((e) => e.trigger === triggerKey)
-    if (eventConfig && !eventConfig.enabled) return
-    const eventName = eventConfig?.event_name || triggerKey
-
-    const payload = {
-      type: 'VTURB_PIXEL_TRACK',
-      trigger: triggerKey,
-      eventName,
-      videoId,
-      trackingPixels: tracking,
-    }
-
-    if (typeof window !== 'undefined') {
-      window.parent?.postMessage(payload, '*')
-      window.postMessage(payload, '*')
-
-      const w = window as any
-      if (typeof w.fbq === 'function') {
-        w.fbq('trackCustom', eventName, { video_id: videoId })
-      }
-      if (typeof w.gtag === 'function') {
-        w.gtag('event', eventName, { video_id: videoId })
-      }
-      if (typeof w.ttq === 'function' && typeof w.ttq.track === 'function') {
-        w.ttq.track(eventName, { video_id: videoId })
-      }
-    }
+    triggerTrackingPixels(triggerKey, videoId, video?.player_settings?.tracking_pixels)
   }
 
   const handlePlay = () => {
@@ -300,38 +344,19 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
   }
 
   if (loading) {
-    return (
-      <div style={{ width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8' }}>
-        Carregando player...
-      </div>
-    )
+    return <div style={{ width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8' }}>Carregando player...</div>
   }
 
   if (error || !video) {
-    return (
-      <div style={{ width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', padding: '1rem' }}>
-        {error || 'Vídeo não encontrado'}
-      </div>
-    )
+    return <div style={{ width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', padding: '1rem' }}>{error || 'Vídeo não encontrado'}</div>
   }
 
   if (domainBlocked) {
     return (
-      <div
-        data-testid="domain-blocked-view"
-        style={{
-          width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          color: '#ef4444', padding: '2rem', textAlign: 'center', boxSizing: 'border-box',
-        }}
-      >
+      <div data-testid="domain-blocked-view" style={{ width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ef4444', padding: '2rem', textAlign: 'center', boxSizing: 'border-box' }}>
         <ShieldAlert size={56} style={{ marginBottom: '1rem' }} />
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', margin: '0 0 0.5rem 0' }}>
-          Reprodução Não Autorizada
-        </h2>
-        <p style={{ fontSize: '0.9rem', color: '#94a3b8', maxWidth: '420px', lineHeight: 1.5, margin: 0 }}>
-          Este vídeo possui proteção de domínio ativada e não tem autorização para ser reproduzido neste site.
-        </p>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', margin: '0 0 0.5rem 0' }}>Reprodução Não Autorizada</h2>
+        <p style={{ fontSize: '0.9rem', color: '#94a3b8', maxWidth: '420px', lineHeight: 1.5, margin: 0 }}>Este vídeo possui proteção de domínio ativada e não tem autorização para ser reproduzido neste site.</p>
       </div>
     )
   }
@@ -414,55 +439,33 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
         />
       )}
 
-      {/* Botão de Play Inteligente (Overlay Padrão) */}
-      {!isPlaying && !isSmartAutoplaying && (() => {
-        const playShape = video.player_settings?.play_button_shape || 'circle'
-        const playSize = video.player_settings?.play_button_size || 'medium'
-        const sizePx = playSize === 'small' ? 56 : playSize === 'large' ? 104 : 80
-        const iconPx = playSize === 'small' ? 26 : playSize === 'large' ? 50 : 38
-        const borderRadius =
-          playShape === 'rounded'
-            ? '18px'
-            : playShape === 'square'
-            ? '8px'
-            : '50%'
-        const buttonBg = playShape === 'minimal' ? 'rgba(10, 12, 18, 0.75)' : primaryColor
-        const buttonBorder = playShape === 'minimal' ? `3px solid ${primaryColor}` : 'none'
+      {/* Banner Informativo Discreto de Autoplay Direto (exibido caso o navegador silencie o som) */}
+      {showDirectUnmuteBanner && (
+        <DirectUnmuteBanner
+          buttonColor={video.player_settings?.smart_autoplay?.button_color || '#ef4444'}
+          text={video.player_settings?.smart_autoplay?.text || 'Seu vídeo já começou!'}
+          buttonText={video.player_settings?.smart_autoplay?.button_text || 'OUVIR'}
+          onUnmute={() => {
+            if (videoRef.current) {
+              videoRef.current.muted = false
+              videoRef.current.volume = 1.0
+              setIsMuted(false)
+              setShowDirectUnmuteBanner(false)
+              videoRef.current.play().catch(() => {})
+            }
+          }}
+        />
+      )}
 
-        return (
-          <div
-            data-testid="big-play-overlay"
-            onClick={handlePlay}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'rgba(0, 0, 0, 0.45)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <div
-              data-testid="big-play-button"
-              style={{
-                width: `${sizePx}px`,
-                height: `${sizePx}px`,
-                borderRadius,
-                background: buttonBg,
-                border: buttonBorder,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 0 35px ${primaryColor}99`,
-                transition: 'transform 0.2s',
-              }}
-            >
-              <Play size={iconPx} color="#fff" style={{ marginLeft: '4px' }} />
-            </div>
-          </div>
-        )
-      })()}
+      {/* Botão de Play Inteligente (Overlay Padrão) */}
+      {!isPlaying && !isSmartAutoplaying && (
+        <BigPlayOverlay
+          primaryColor={primaryColor}
+          shape={video.player_settings?.play_button_shape}
+          size={video.player_settings?.play_button_size}
+          onPlay={handlePlay}
+        />
+      )}
 
       {/* Botão de CTA com delay */}
       {showCta && video.player_settings?.cta_enabled && (

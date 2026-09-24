@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Zap,
   VolumeX,
+  Volume2,
   Layers,
   Clock,
   Target,
@@ -110,8 +111,12 @@ export const VideoDetailSidebar: React.FC<VideoDetailSidebarProps> = ({
     },
     {
       id: 'smart_autoplay',
-      label: 'Smart Autoplay',
-      icon: <VolumeX size={17} />,
+      label: settings.smart_autoplay?.enabled && settings.smart_autoplay?.mode === 'direct'
+        ? 'Autoplay Direto'
+        : 'Smart Autoplay',
+      icon: settings.smart_autoplay?.enabled && settings.smart_autoplay?.mode === 'direct'
+        ? <Volume2 size={17} />
+        : <VolumeX size={17} />,
       activeColor: '#dc2626',
       activeBg: '#fef2f2',
       badge: {

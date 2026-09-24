@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -82,6 +83,13 @@ def get_backup_metrics(
         unit = "hora(s)" if schedule.frequency == "hours" else "dia(s)" if schedule.frequency == "days" else "semana(s)"
         freq_text = f"A cada {schedule.interval_value} {unit}"
 
+    storage_ok = backblaze_backup_service.is_configured()
+    storage_msg = (
+        "Backblaze B2 conectado com sucesso."
+        if storage_ok
+        else "Backblaze B2 não configurado ou credenciais pendentes no .env."
+    )
+
     return BackupMetricsResponse(
         last_backup_filename=last_backup.filename if last_backup else None,
         last_backup_at=last_backup.created_at if last_backup else None,
@@ -89,6 +97,8 @@ def get_backup_metrics(
         frequency_text=freq_text,
         retention_limit=retention,
         total_backups=total_count,
+        storage_configured=storage_ok,
+        storage_message=storage_msg,
     )
 
 @router.post("/create", response_model=BackupRecordResponse)
@@ -98,7 +108,7 @@ def create_manual_backup(
 ):
     """Gera um snapshot manual imediato do banco PostgreSQL e envia para o Backblaze B2."""
     try:
-        record = BackupManager.create_database_dump(db)
+        record = BackupManager.create_database_dump(db, is_manual=True)
         logger.info(f"Backup manual criado com sucesso: {record.filename}")
         return record
     except Exception as e:
@@ -180,6 +190,7 @@ def download_backup(
             path=str(temp_path),
             filename=record.filename,
             media_type="application/gzip",
+            background=BackgroundTask(temp_path.unlink, missing_ok=True),
         )
     except Exception as e:
         logger.error(f"Erro no download do backup {backup_id}: {e}")
@@ -210,6 +221,12 @@ def delete_backup(
     current_user: User = Depends(require_super_admin),
 ):
     """Exclui um backup do Backblaze S3 e remove o registro do banco."""
+    if not backblaze_backup_service.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Backblaze B2 não está conectado. Configure as credenciais de armazenamento (BACKBLAZE_KEY_ID, BACKBLAZE_APPLICATION_KEY, BACKBLAZE_BUCKET_NAME, BACKBLAZE_ENDPOINT_URL) no servidor para poder gerenciar e excluir backups da nuvem com segurança."
+        )
+
     record = db.query(BackupRecord).filter(BackupRecord.id == backup_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Backup não encontrado.")
@@ -232,6 +249,12 @@ def bulk_delete_backups(
     """Exclui múltiplos backups em lote do Backblaze S3 e do banco."""
     if not payload.ids:
         return BulkDeleteBackupsResponse(deleted_count=0, deleted_ids=[])
+
+    if not backblaze_backup_service.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Backblaze B2 não está conectado. Configure as credenciais de armazenamento no servidor para poder excluir backups em lote com segurança."
+        )
 
     records = db.query(BackupRecord).filter(BackupRecord.id.in_(payload.ids)).all()
     deleted_ids = []

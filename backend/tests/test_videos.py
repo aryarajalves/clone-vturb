@@ -392,7 +392,23 @@ def test_advanced_player_settings_persistence():
     assert settings["domain_protection"]["enabled"] is True
     assert "meusite.com.br" in settings["domain_protection"]["allowed_domains"]
 
-    # 3. Atualiza desativando smart_autoplay, alterando size para mini e alterando tempo do pitch
+    # 3. Atualiza ativando mode direct (sem chamada na frente)
+    update_res_direct = client.put(f"/videos/{video_id}", json={
+        "player_settings": {
+            **settings,
+            "smart_autoplay": {
+                **settings["smart_autoplay"],
+                "enabled": True,
+                "mode": "direct"
+            }
+        }
+    })
+    assert update_res_direct.status_code == 200
+    direct_settings = update_res_direct.json()["player_settings"]
+    assert direct_settings["smart_autoplay"]["enabled"] is True
+    assert direct_settings["smart_autoplay"]["mode"] == "direct"
+
+    # 4. Atualiza desativando smart_autoplay, alterando size para mini e alterando tempo do pitch
     update_res = client.put(f"/videos/{video_id}", json={
         "player_settings": {
             **settings,

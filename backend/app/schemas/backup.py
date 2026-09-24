@@ -40,6 +40,8 @@ class BackupMetricsResponse(BaseModel):
     frequency_text: str = "A cada 6 hora(s)"
     retention_limit: int = 30
     total_backups: int = 0
+    storage_configured: bool = False
+    storage_message: Optional[str] = None
 
 class BulkDeleteBackupsRequest(BaseModel):
     ids: List[str]

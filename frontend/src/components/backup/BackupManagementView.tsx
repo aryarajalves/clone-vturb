@@ -16,6 +16,7 @@ import { BackupMetricsCards } from './BackupMetricsCards'
 import { BackupsS3Tab } from './BackupsS3Tab'
 import { BackupScheduleTab } from './BackupScheduleTab'
 import { BackupImportTab } from './BackupImportTab'
+import { BackupCreationModal } from './BackupCreationModal'
 
 interface BackupManagementViewProps {
   showToast: (msg: string) => void
@@ -71,7 +72,8 @@ export const BackupManagementView: React.FC<BackupManagementViewProps> = ({ show
 
   useEffect(() => {
     loadAllData()
-  }, [loadAllData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Ação: Fazer Backup Manual
   const handleCreateManualBackup = async () => {
@@ -132,7 +134,7 @@ export const BackupManagementView: React.FC<BackupManagementViewProps> = ({ show
   }
 
   // Ação: Exclusão em Lote
-  const handleBulkDeleteBackups = async (ids: number[]) => {
+  const handleBulkDeleteBackups = async (ids: string[]) => {
     try {
       setDeleteLoading(true)
       const res = await bulkDeleteBackups(ids)
@@ -337,6 +339,9 @@ export const BackupManagementView: React.FC<BackupManagementViewProps> = ({ show
       {activeTab === 'import' && (
         <BackupImportTab onUploadBackup={handleUploadBackup} uploading={uploading} />
       )}
+
+      {/* Popup / Modal de Feedback de Criação de Backup */}
+      <BackupCreationModal isOpen={creatingBackup} />
     </main>
   )
 }

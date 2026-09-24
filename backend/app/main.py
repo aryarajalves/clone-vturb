@@ -52,27 +52,27 @@ def init_super_admin():
                 user.name = "Super Admin"
             db.commit()
             logger.info("Credenciais do Super Admin sincronizadas com sucesso!")
-
-        # Garante a regra estrita de apenas 1 Super Admin oficial no sistema:
-        # Qualquer outro usuário com super_admin é despromovido para admin comum
-        other_supers = db.query(User).filter(
-            User.email.notilike(email),
-            (User.is_super_admin == True) | (User.role == "super_admin")
-        ).all()
-        for other in other_supers:
-            logger.info(f"Despromovendo usuário {other.email} para admin (SuperAdmin oficial único: {email})")
-            other.is_super_admin = False
-            other.role = "admin"
-        if other_supers:
-            db.commit()
     except Exception as exc:
         logger.error(f"Erro ao inicializar conta de Super Admin: {exc}")
         db.rollback()
     finally:
         db.close()
 
+def init_db():
+    """Garante que todas as tabelas mapeadas no SQLAlchemy existam no banco de dados."""
+    try:
+        from app.core.database import Base, engine
+        import app.models.video  # noqa: F401
+        import app.models.user   # noqa: F401
+        import app.models.backup # noqa: F401
+        Base.metadata.create_all(bind=engine)
+        logger.info("Tabelas do banco de dados verificadas e inicializadas com sucesso.")
+    except Exception as exc:
+        logger.error(f"Erro ao inicializar tabelas do banco de dados: {exc}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     init_super_admin()
     yield
 

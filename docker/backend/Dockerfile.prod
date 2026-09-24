@@ -1,0 +1,41 @@
+# ==============================================================================
+# Dockerfile de Produção - Backend (FastAPI + SQLAlchemy + PostgreSQL)
+# ==============================================================================
+
+FROM python:3.11-slim as base
+
+# Otimizações de ambiente Python para contêiner
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on
+
+WORKDIR /app
+
+# Instalação de dependências essenciais do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    build-essential \
+    libpq-dev \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalação das bibliotecas Python com cache otimizado
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Cópia do código-fonte do backend
+COPY backend/ .
+
+# Criação de diretório persistente para uploads estáticos caso não use S3/B2
+RUN mkdir -p /app/static/uploads
+
+# Porta padrão de escuta da API
+EXPOSE 8000
+
+# Verificação de integridade do contêiner
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ || exit 1
+
+# Inicialização com múltiplos workers Uvicorn para alta concorrência em produção
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--proxy-headers", "--forwarded-allow-ips", "*"]

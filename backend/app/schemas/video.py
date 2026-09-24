@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict
 class SmartAutoplaySettings(BaseModel):
     model_config = ConfigDict(extra="allow")
     enabled: bool = False
+    mode: Optional[str] = "smart"  # 'smart' (chamada para desmutar) ou 'direct' (autoplay direto com som)
     text: str = "Seu vídeo já começou!"
     subtext: str = "Clique no botão abaixo para ativar o som"
     button_color: str = "#ef4444"

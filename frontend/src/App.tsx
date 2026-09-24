@@ -75,10 +75,11 @@ function App() {
   const [bulkVideosToDelete, setBulkVideosToDelete] = useState<Video[] | null>(null)
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3000)
-  }
+  }, [])
+
 
   // Página pública de cadastro via convite
   if (inviteToken) {

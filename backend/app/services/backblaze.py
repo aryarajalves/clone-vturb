@@ -22,16 +22,23 @@ class BackblazeBackupService:
         return settings.BACKBLAZE_BUCKET_NAME.strip() or "vturb-backups"
 
     def is_configured(self) -> bool:
-        """Verifica se as credenciais do Backblaze B2 estão configuradas."""
-        return bool(
-            settings.BACKBLAZE_KEY_ID
-            and settings.BACKBLAZE_APPLICATION_KEY
-            and settings.BACKBLAZE_BUCKET_NAME
-            and settings.BACKBLAZE_ENDPOINT_URL
-        )
+        """Verifica se as credenciais do Backblaze B2 estão configuradas e não são valores de exemplo."""
+        key_id = (settings.BACKBLAZE_KEY_ID or "").strip()
+        app_key = (settings.BACKBLAZE_APPLICATION_KEY or "").strip()
+        bucket = (settings.BACKBLAZE_BUCKET_NAME or "").strip()
+        endpoint = (settings.BACKBLAZE_ENDPOINT_URL or "").strip()
+
+        if not (key_id and app_key and bucket and endpoint):
+            return False
+
+        # Se contiver valores de exemplo fictícios do .env.example, considera NÃO configurado
+        if "xxxx" in key_id.lower() or "xxxx" in app_key.lower() or bucket == "meu-bucket-vturb":
+            return False
+
+        return True
 
     def get_s3_client(self):
-        """Retorna cliente S3 configurado para o Backblaze B2."""
+        """Retorna cliente S3 configurado para o Backblaze B2 com timeouts seguros."""
         if self._s3_client is None:
             endpoint = settings.BACKBLAZE_ENDPOINT_URL.strip()
             if not endpoint.startswith("http"):
@@ -44,7 +51,10 @@ class BackblazeBackupService:
                 aws_secret_access_key=settings.BACKBLAZE_APPLICATION_KEY.strip(),
                 config=Config(
                     signature_version="s3v4",
-                    s3={"addressing_style": "path"}
+                    s3={"addressing_style": "path"},
+                    connect_timeout=4,
+                    read_timeout=6,
+                    retries={"max_attempts": 1}
                 ),
             )
         return self._s3_client

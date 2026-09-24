@@ -3,6 +3,9 @@ import { VolumeX, Volume2, Sparkles, Check, Play } from 'lucide-react'
 import type { Video, SmartAutoplaySettings, SmartAutoplaySize } from '../../types/video'
 import { updateVideo, getMediaUrl } from '../../services/api'
 import { SmartAutoplayOverlay } from '../SmartAutoplayOverlay'
+import { SmartAutoplayCallForm } from './SmartAutoplayCallForm'
+import { DirectAutoplayForm } from './DirectAutoplayForm'
+import { DirectUnmuteBanner } from '../DirectUnmuteBanner'
 
 interface VideoSmartAutoplayTabProps {
   video: Video
@@ -17,6 +20,7 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
 }) => {
   const current = video.player_settings?.smart_autoplay || {
     enabled: false,
+    mode: 'smart',
     text: 'Seu vídeo já começou!',
     subtext: 'Clique no botão abaixo para ativar o som',
     button_color: '#ef4444',
@@ -26,6 +30,7 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
   }
 
   const [enabled, setEnabled] = useState(Boolean(current.enabled))
+  const [mode, setMode] = useState<'smart' | 'direct'>(current.mode || 'smart')
   const [size, setSize] = useState<SmartAutoplaySize>(current.size || 'medium')
   const [text, setText] = useState(current.text || 'Seu vídeo já começou!')
   const [subtext, setSubtext] = useState(current.subtext || 'Clique no botão abaixo para ativar o som')
@@ -41,6 +46,7 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
         setSaving(true)
         const smartAutoplayData: SmartAutoplaySettings = {
           enabled: false,
+          mode,
           text,
           subtext,
           button_color: buttonColor,
@@ -68,6 +74,7 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
       setSaving(true)
       const smartAutoplayData: SmartAutoplaySettings = {
         enabled,
+        mode,
         text,
         subtext,
         button_color: buttonColor,
@@ -85,11 +92,13 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
       onSave(updated)
       showToast(
         enabled
-          ? 'Smart Autoplay ativado e salvo com sucesso!'
-          : 'Smart Autoplay desativado com sucesso!'
+          ? mode === 'direct'
+            ? 'Autoplay Direto com som ativado e salvo com sucesso!'
+            : 'Smart Autoplay ativado e salvo com sucesso!'
+          : 'Autoplay desativado com sucesso!'
       )
     } catch {
-      showToast('Erro ao salvar configurações do Smart Autoplay.')
+      showToast('Erro ao salvar configurações do Autoplay.')
     } finally {
       setSaving(false)
     }
@@ -126,14 +135,16 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
               justifyContent: 'center',
             }}
           >
-            <VolumeX size={24} />
+            {mode === 'direct' ? <Volume2 size={24} /> : <VolumeX size={24} />}
           </div>
           <div>
             <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.15rem', color: '#1e293b' }}>
-              Smart Autoplay™
+              {mode === 'direct' ? 'Autoplay Direto com Som' : 'Smart Autoplay™'}
             </h3>
             <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-              Inicia o vídeo automaticamente sem som e exibe uma chamada animada para desmutar.
+              {mode === 'direct'
+                ? 'Inicia o vídeo imediatamente com som assim que a página é carregada, sem chamada na frente.'
+                : 'Inicia o vídeo automaticamente sem som e exibe uma chamada animada para desmutar.'}
             </p>
           </div>
         </div>
@@ -193,148 +204,128 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
           }}
         >
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          {/* Coluna da Esquerda: Configurações */}
-          <div>
-            <h4 style={{ margin: '0 0 1.25rem 0', fontSize: '1rem', color: '#1e293b', fontWeight: 600 }}>
-              Personalização da Chamada
-            </h4>
-
-            {/* Seletor de Tamanho (Mini, Pequeno, Médio, Grande) */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
-                Tamanho da Chamada
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
-                {[
-                  { id: 'mini', label: 'Mini', desc: 'Compacto' },
-                  { id: 'small', label: 'Pequeno', desc: 'Mobile/9:16' },
-                  { id: 'medium', label: 'Médio', desc: 'Padrão' },
-                  { id: 'large', label: 'Grande', desc: 'Destaque' },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    data-testid={`smart-autoplay-size-${opt.id}`}
-                    disabled={!enabled}
-                    onClick={() => setSize(opt.id as SmartAutoplaySize)}
-                    style={{
-                      padding: '0.55rem 0.35rem',
-                      borderRadius: '8px',
-                      border: size === opt.id ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                      background: size === opt.id ? '#fef2f2' : '#ffffff',
-                      color: size === opt.id ? '#b91c1c' : '#475569',
-                      cursor: enabled ? 'pointer' : 'not-allowed',
-                      textAlign: 'center',
-                      transition: 'all 0.15s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '2px',
-                    }}
-                  >
-                    <span style={{ fontWeight: 700, fontSize: '0.83rem' }}>{opt.label}</span>
-                    <span style={{ fontSize: '0.65rem', color: size === opt.id ? '#dc2626' : '#94a3b8' }}>{opt.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
-                Texto Principal
-              </label>
-              <input
-                type="text"
-                data-testid="smart-autoplay-text-input"
-                disabled={!enabled}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
+          {/* Seletor de Modo de Autoplay */}
+          <div style={{ marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
+            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.75rem' }}>
+              Modo de Inicialização do Vídeo
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <button
+                type="button"
+                data-testid="autoplay-mode-smart"
+                onClick={() => setMode('smart')}
                 style={{
-                  width: '100%',
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.9rem',
-                  background: enabled ? '#ffffff' : '#f8fafc',
+                  padding: '1rem 1.25rem',
+                  borderRadius: '12px',
+                  border: mode === 'smart' ? '2px solid #ef4444' : '1px solid #e2e8f0',
+                  background: mode === 'smart' ? '#fef2f2' : '#ffffff',
+                  color: mode === 'smart' ? '#b91c1c' : '#334155',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.85rem',
+                  transition: 'all 0.15s ease',
                 }}
-              />
-            </div>
+              >
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: mode === 'smart' ? '#fee2e2' : '#f1f5f9',
+                    color: mode === 'smart' ? '#ef4444' : '#64748b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <VolumeX size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.2rem' }}>
+                    Smart Autoplay™
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: mode === 'smart' ? '#dc2626' : '#64748b', lineHeight: 1.4 }}>
+                    Inicia no mudo com chamada visual animada para o usuário clicar e desmutar.
+                  </div>
+                </div>
+              </button>
 
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
-                Subtexto / Instrução
-              </label>
-              <input
-                type="text"
-                data-testid="smart-autoplay-subtext-input"
-                disabled={!enabled}
-                value={subtext}
-                onChange={(e) => setSubtext(e.target.value)}
+              <button
+                type="button"
+                data-testid="autoplay-mode-direct"
+                onClick={() => setMode('direct')}
                 style={{
-                  width: '100%',
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.9rem',
-                  background: enabled ? '#ffffff' : '#f8fafc',
+                  padding: '1rem 1.25rem',
+                  borderRadius: '12px',
+                  border: mode === 'direct' ? '2px solid #ef4444' : '1px solid #e2e8f0',
+                  background: mode === 'direct' ? '#fef2f2' : '#ffffff',
+                  color: mode === 'direct' ? '#b91c1c' : '#334155',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.85rem',
+                  transition: 'all 0.15s ease',
                 }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
-                Texto do Botão
-              </label>
-              <input
-                type="text"
-                data-testid="smart-autoplay-button-text-input"
-                disabled={!enabled}
-                value={buttonText}
-                onChange={(e) => setButtonText(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.9rem',
-                  background: enabled ? '#ffffff' : '#f8fafc',
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
-                Cor de Destaque do Botão
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <input
-                  type="color"
-                  data-testid="smart-autoplay-color-picker"
-                  disabled={!enabled}
-                  value={buttonColor}
-                  onChange={(e) => setButtonColor(e.target.value)}
-                  style={{ width: '40px', height: '40px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>{buttonColor}</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
-              <input
-                type="checkbox"
-                id="restart-checkbox"
-                data-testid="smart-autoplay-restart-checkbox"
-                disabled={!enabled}
-                checked={restartOnUnmute}
-                onChange={(e) => setRestartOnUnmute(e.target.checked)}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
-              <label htmlFor="restart-checkbox" style={{ fontSize: '0.875rem', color: '#334155', cursor: 'pointer' }}>
-                Reiniciar vídeo do início ao clicar para ouvir
-              </label>
+              >
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: mode === 'direct' ? '#fee2e2' : '#f1f5f9',
+                    color: mode === 'direct' ? '#ef4444' : '#64748b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Volume2 size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.2rem' }}>
+                    Autoplay Direto com Som
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: mode === 'direct' ? '#dc2626' : '#64748b', lineHeight: 1.4 }}>
+                    Inicia com áudio de imediato, sem overlay na frente, assim que o visitante acessa.
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
+        <div style={{ display: 'grid', gridTemplateColumns: mode === 'direct' ? '1fr 1fr' : '1fr 1fr', gap: '2rem' }}>
+          {/* Coluna da Esquerda: Configurações do Modo Selecionado */}
+          {mode === 'direct' ? (
+            <DirectAutoplayForm
+              enabled={enabled}
+              text={text}
+              onTextChange={setText}
+              buttonText={buttonText}
+              onButtonTextChange={setButtonText}
+              buttonColor={buttonColor}
+              onButtonColorChange={setButtonColor}
+            />
+          ) : (
+            <SmartAutoplayCallForm
+              enabled={enabled}
+              size={size}
+              onSizeChange={setSize}
+              text={text}
+              onTextChange={setText}
+              subtext={subtext}
+              onSubtextChange={setSubtext}
+              buttonText={buttonText}
+              onButtonTextChange={setButtonText}
+              buttonColor={buttonColor}
+              onButtonColorChange={setButtonColor}
+              restartOnUnmute={restartOnUnmute}
+              onRestartOnUnmuteChange={setRestartOnUnmute}
+            />
+          )}
 
           {/* Coluna da Direita: Prévia ao Vivo */}
           <div>
@@ -362,25 +353,39 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
                 <img
                   src={getMediaUrl(video.thumbnail_url)}
                   alt={video.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: enabled ? 0.35 : 0.9 }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: enabled && mode === 'smart' ? 0.35 : 0.9 }}
                 />
               ) : (
                 <div style={{ width: '100%', height: '100%', backgroundColor: '#1e293b' }} />
               )}
 
               {enabled ? (
-                <SmartAutoplayOverlay
-                  settings={{
-                    enabled: true,
-                    text,
-                    subtext,
-                    button_color: buttonColor,
-                    button_text: buttonText,
-                    restart_on_unmute: restartOnUnmute,
-                    size,
-                  }}
-                  onUnmute={() => {}}
-                />
+                mode === 'direct' ? (
+                  <div
+                    data-testid="direct-autoplay-preview-badge"
+                    style={{ position: 'absolute', inset: 0 }}
+                  >
+                    <DirectUnmuteBanner
+                      buttonColor={buttonColor}
+                      text={text}
+                      buttonText={buttonText}
+                      onUnmute={() => {}}
+                    />
+                  </div>
+                ) : (
+                  <SmartAutoplayOverlay
+                    settings={{
+                      enabled: true,
+                      text,
+                      subtext,
+                      button_color: buttonColor,
+                      button_text: buttonText,
+                      restart_on_unmute: restartOnUnmute,
+                      size,
+                    }}
+                    onUnmute={() => {}}
+                  />
+                )
               ) : (
                 <div
                   style={{
@@ -393,7 +398,7 @@ export const VideoSmartAutoplayTab: React.FC<VideoSmartAutoplayTabProps> = ({
                     fontSize: '0.875rem',
                   }}
                 >
-                  Smart Autoplay Desativado
+                  Autoplay Desativado
                 </div>
               )}
             </div>

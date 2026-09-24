@@ -102,6 +102,7 @@ def test_create_manual_backup_flow():
     assert "id" in backup
     assert "filename" in backup
     assert backup["filename"].endswith(".dump.gz")
+    assert "_manual" in backup["filename"]
     assert backup["status"] == "completed"
     backup_id = backup["id"]
 
@@ -111,10 +112,20 @@ def test_create_manual_backup_flow():
     ids = [b["id"] for b in res_list.json()]
     assert backup_id in ids
 
-    # Download do arquivo
+    # Download do arquivo com cabeçalho Authorization
     res_down = client.get(f"/backups/{backup_id}/download", headers=headers)
     assert res_down.status_code == 200
     assert len(res_down.content) > 0
+
+    # Download do arquivo com token via query parameter (?token=) sem header Authorization
+    res_down_query = client.get(f"/backups/{backup_id}/download?token={token}")
+    assert res_down_query.status_code == 200
+    assert len(res_down_query.content) > 0
+
+    # Tentativa de download sem nenhum token deve retornar 401
+    res_down_no_token = client.get(f"/backups/{backup_id}/download")
+    assert res_down_no_token.status_code == 401
+    assert "Token não fornecido" in res_down_no_token.json()["detail"]
 
     # Restauração do arquivo
     res_rest = client.post(f"/backups/{backup_id}/restore", headers=headers)
@@ -155,3 +166,30 @@ def test_upload_external_backup_and_bulk_delete():
     assert bulk_data["deleted_count"] == 2
     assert uploaded_id in bulk_data["deleted_ids"]
     assert b2_id in bulk_data["deleted_ids"]
+
+def test_delete_backup_blocked_when_backblaze_disconnected(monkeypatch):
+    from app.services.backblaze import backblaze_backup_service
+    token = get_super_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Simula Backblaze desconectado / não configurado
+    monkeypatch.setattr(backblaze_backup_service, "is_configured", lambda: False)
+
+    # Cria backup para testar
+    b = client.post("/backups/create", headers=headers).json()
+    b_id = b["id"]
+
+    # Exclusão individual bloqueada
+    res_del = client.delete(f"/backups/{b_id}", headers=headers)
+    assert res_del.status_code == 400
+    assert "Backblaze B2 não está conectado" in res_del.json()["detail"]
+
+    # Exclusão em lote bloqueada
+    res_bulk = client.post("/backups/bulk-delete", headers=headers, json={"ids": [b_id]})
+    assert res_bulk.status_code == 400
+    assert "Backblaze B2 não está conectado" in res_bulk.json()["detail"]
+
+    # Limpeza com Backblaze conectado
+    monkeypatch.setattr(backblaze_backup_service, "is_configured", lambda: True)
+    assert client.delete(f"/backups/{b_id}", headers=headers).status_code == 200
+

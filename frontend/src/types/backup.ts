@@ -29,6 +29,8 @@ export interface BackupMetrics {
   retention_limit: number
   total_backups: number
   total_size_bytes?: number
+  storage_configured?: boolean
+  storage_message?: string | null
 }
 
 export interface UpdateSchedulePayload {

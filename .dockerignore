@@ -18,3 +18,5 @@
 **/.venv
 **/venv
 **/postgres_data
+backend/static/uploads/*
+!backend/static/uploads/.gitkeep

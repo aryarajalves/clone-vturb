@@ -70,11 +70,13 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
   - **Marcadores de Capítulos (`chapters`)**: Divisão do vídeo em múltiplos capítulos nomeados com timestamps (ex: `00:00`, `00:50`), renderizando uma barra de progresso segmentada interativa com navegação direta por clique.
   - Configurações visuais adicionais: Paleta de cores de destaque com presets e seletor hexadecimal, formato do botão de play (Circular, Retangular, Quadrado, Minimalista) e tamanho do botão (Pequeno, Médio, Grande).
   - Persistência das opções no objeto `player_settings` (`border_radius`, `aspect_ratio`, `controls_config` e `chapters`).
-- [x] **Smart Autoplay™**:
-  - Inicia o vídeo de forma automática e mudo para contornar o bloqueio de autoplay dos navegadores modernos.
-  - Exibe um banner/overlay chamativo com animação de som, texto customizável e botão com cor e texto personalizados para o espectador desmutar com 1 clique ("CLIQUE PARA OUVIR").
-  - Tamanho da chamada configurável em 4 opções (Mini - 250px, Pequeno - 310px, Médio - 420px padrão, Grande - 500px) com prévia e escalonamento responsivo em tempo real, permitindo ajuste perfeito em vídeos verticais (9:16), mobile ou widescreen (16:9).
-  - Opção configurável de reiniciar o vídeo do início (00:00) ao desmutar ou continuar do ponto onde estava tocando.
+- [x] **Smart Autoplay™ & Autoplay Direto com Som**:
+  - Permite escolher entre dois modos de inicialização automática ao ativar o recurso:
+    1. **Smart Autoplay™ (Padrão)**: Inicia o vídeo de forma automática e mudo para contornar o bloqueio de autoplay dos navegadores modernos, exibindo uma chamada animada customizável para desmutar com 1 clique ("CLIQUE PARA OUVIR"), personalização de tamanhos (Mini, Pequeno, Médio, Grande), cores e opção de reiniciar o vídeo do início ao desmutar.
+    2. **Autoplay Direto com Som**: Inicia a reprodução imediatamente com som ligado assim que o visitante acessa a página, sem cards, banners ou overlays na frente do vídeo.
+       - **Atributos de Iframe Padronizados**: Códigos de embed gerados utilizam `allow="autoplay *; fullscreen *; encrypted-media *"` para conceder delegação de permissão de áudio autônomo pelo navegador pai.
+       - **Desbloqueio Autônomo e Transparente de Áudio**: Caso o navegador do visitante tenha política restrita de autoplay sem engajamento prévio (MEI), o vídeo começa reproduzindo e o script pai ouve a primeira interação do usuário na página (clique, toque ou scroll) emitindo `VTURB_PARENT_INTERACTION`, desmutando o áudio instantaneamente em 100% de volume sem exibir qualquer botão ou overlay na frente do vídeo.
+  - Na barra lateral, reflete dinamicamente o status e ícone correspondente ("Smart Autoplay" ou "Autoplay Direto").
 - [x] **Player Flutuante (Picture-in-Picture / Mini-Player)**:
   - Mantém o vídeo visível fixando-o em miniatura no canto da tela (`bottom-right` ou `bottom-left`) assim que o player principal sai do campo de visão durante o scroll.
   - Largura configurável (ex: 320px) com sombra e bordas arredondadas no padrão premium, incluindo botão para fechar a miniatura a qualquer momento.
@@ -149,6 +151,9 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
   3. **Importar Backup Externo:** Permite envio de arquivos `.dump`, `.dump.gz` ou `.sql` externos diretamente para o Backblaze B2 com restauração guiada.
 - [x] **Política de Retenção:** Ao atingir o limite máximo configurado (padrão: 30 backups), o sistema exclui automaticamente os backups mais antigos do S3 e do banco.
 - [x] **Modo de Desenvolvimento:** Fallback local automático em `backend/backups/` quando as chaves S3 não estiverem configuradas.
+- [x] **Feedback Visual de Backup Manual (Popup Centralizado):** Ao clicar em "Fazer Backup Agora", um popup modal centralizado com backdrop escuro translúcido (`BackupCreationModal`) é exibido imediatamente no centro da tela, apresentando título ("Criando Backup do Sistema"), status animado ("Processando PostgreSQL & S3"), barra de progresso indeterminada e bloqueio contra interações acidentais até a conclusão do processo.
+- [x] **Diferenciação de Tipos de Backup na Listagem:** Backups manuais gerados pelo botão "Fazer Backup Agora" recebem obrigatoriamente o sufixo `_manual` em seu nome de arquivo (ex: `vturb_backup_YYYY_MM_DD_HH_MM_SS_manual.dump.gz`) e são exibidos com o badge azul **Manual**. Backups disparados pela rotina automática de agendamento recebem o sufixo `_auto` com badge amarelo **Automático**. Backups enviados de fora pelo usuário recebem o badge roxo **Importado** (`is_external: true`).
+
 
 ---
 

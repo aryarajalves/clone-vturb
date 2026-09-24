@@ -2,6 +2,7 @@ export type SmartAutoplaySize = 'mini' | 'small' | 'medium' | 'large'
 
 export interface SmartAutoplaySettings {
   enabled: boolean
+  mode?: 'smart' | 'direct'
   text?: string
   subtext?: string
   button_color?: string

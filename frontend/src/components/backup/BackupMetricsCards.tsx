@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock, Calendar, HardDrive } from 'lucide-react'
+import { Clock, Calendar, HardDrive, Cloud, CloudOff } from 'lucide-react'
 import type { BackupMetrics } from '../../types/backup'
 
 interface BackupMetricsCardsProps {
@@ -208,6 +208,61 @@ export const BackupMetricsCards: React.FC<BackupMetricsCardsProps> = ({ metrics,
           </div>
           <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
             {formatBytes(metrics?.total_size_bytes)} utilizados
+          </span>
+        </div>
+      </div>
+
+      {/* Card 4: Status do Backblaze B2 */}
+      <div
+        data-testid="metric-storage-status"
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          border: `1px solid ${metrics?.storage_configured ? '#bbf7d0' : '#fed7aa'}`,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+        }}
+      >
+        <div
+          style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            backgroundColor: metrics?.storage_configured ? '#dcfce7' : '#fff7ed',
+            color: metrics?.storage_configured ? '#16a34a' : '#ea580c',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {metrics?.storage_configured ? <Cloud size={24} /> : <CloudOff size={24} />}
+        </div>
+        <div>
+          <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
+            Backblaze B2 (Nuvem)
+          </span>
+          <div
+            style={{
+              fontSize: '1.15rem',
+              fontWeight: 700,
+              color: metrics?.storage_configured ? '#16a34a' : '#ea580c',
+              marginTop: '0.25rem',
+            }}
+          >
+            {loading
+              ? 'Carregando...'
+              : metrics?.storage_configured
+                ? 'Conectado'
+                : 'Desconectado'}
+          </div>
+          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+            {metrics?.storage_configured
+              ? 'Sincronização em nuvem ativa'
+              : 'Cadastre credenciais no .env'}
           </span>
         </div>
       </div>

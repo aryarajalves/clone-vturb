@@ -25,11 +25,12 @@ logger = logging.getLogger("projetovturb.users")
 router = APIRouter(prefix="/users", tags=["Gestão de Usuários"])
 
 def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Valida se o usuário autenticado é estritamente o Super Admin oficial."""
+    """Valida se o usuário autenticado é estritamente o Super Admin oficial ou possui privilégios de Super Admin."""
     official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
     is_official = (
-        current_user.email.strip().lower() == official_email or
-        current_user.is_super_admin is True
+        bool(current_user.is_super_admin) or
+        current_user.role == "super_admin" or
+        current_user.email.strip().lower() == official_email
     )
     if not is_official:
         logger.warning(f"Acesso negado à Gestão de Usuários para {current_user.email} (não é Super Admin)")
@@ -38,6 +39,7 @@ def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
             detail="Acesso restrito exclusivamente ao Super Admin."
         )
     return current_user
+
 
 @router.get("/", response_model=List[UserResponse])
 def list_users(
@@ -59,9 +61,6 @@ def list_users(
                 u.name = "Super Admin"
             super_admin_user = u
         else:
-            if u.is_super_admin or u.role == "super_admin":
-                u.is_super_admin = False
-                u.role = "admin"
             common_users.append(u)
 
     if super_admin_user:

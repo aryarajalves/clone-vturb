@@ -48,6 +48,8 @@ const mockMetricsData: BackupMetrics = {
   retention_limit: 30,
   total_backups: 2,
   total_size_bytes: 3145728,
+  storage_configured: true,
+  storage_message: 'Backblaze B2 conectado com sucesso.',
 }
 
 const mockScheduleData: BackupSchedule = {
@@ -101,9 +103,12 @@ describe('Módulo de Backup Automático', () => {
     expect(screen.getByTestId('metric-last-backup')).toBeInTheDocument()
     expect(screen.getByTestId('metric-next-backup')).toBeInTheDocument()
     expect(screen.getByTestId('metric-retention')).toBeInTheDocument()
+    expect(screen.getByTestId('metric-storage-status')).toBeInTheDocument()
 
-    expect(screen.getAllByText('vturb_backup_20260911_manual.dump.gz').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('vturb_backup_20260910_auto.dump.gz')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getAllByText('vturb_backup_20260911_manual.dump.gz').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByText('vturb_backup_20260910_auto.dump.gz')).toBeInTheDocument()
+    })
   })
 
   it('permite alternar entre as 3 abas e salva preferência no localStorage', async () => {
@@ -129,7 +134,13 @@ describe('Módulo de Backup Automático', () => {
     expect(localStorage.getItem('vturb_backup_active_subtab')).toBe('s3')
   })
 
-  it('executa backup manual com sucesso ao clicar no botão "Fazer Backup Agora"', async () => {
+  it('executa backup manual com sucesso ao clicar no botão "Fazer Backup Agora" e exibe popup no centro da tela', async () => {
+    let resolveBackup: (val: BackupRecord) => void
+    const backupPromise = new Promise<BackupRecord>((resolve) => {
+      resolveBackup = resolve
+    })
+    vi.mocked(backupApi.createManualBackup).mockReturnValue(backupPromise)
+
     const createdBackup: BackupRecord = {
       id: 'backup-3',
       filename: 'vturb_backup_manual_instant.dump.gz',
@@ -139,7 +150,6 @@ describe('Módulo de Backup Automático', () => {
       is_external: false,
       created_at: new Date().toISOString(),
     }
-    vi.mocked(backupApi.createManualBackup).mockResolvedValue(createdBackup)
 
     render(<BackupManagementView showToast={showToast} />)
 
@@ -147,13 +157,27 @@ describe('Módulo de Backup Automático', () => {
       expect(screen.getByTestId('btn-create-manual-backup')).toBeInTheDocument()
     })
 
+    // Antes do clique, o modal não deve existir
+    expect(screen.queryByTestId('backup-creation-modal')).not.toBeInTheDocument()
+
+    // Clica no botão para fazer backup agora
     fireEvent.click(screen.getByTestId('btn-create-manual-backup'))
+
+    // Durante o processamento: o modal deve aparecer no centro da tela
+    expect(screen.getByTestId('backup-creation-modal')).toBeInTheDocument()
+    expect(screen.getByTestId('backup-creation-title')).toHaveTextContent('Criando Backup do Sistema')
+    expect(screen.getByText('Processando PostgreSQL & S3')).toBeInTheDocument()
+
+    // Conclui a promessa de criação do backup
+    resolveBackup!(createdBackup)
 
     await waitFor(() => {
       expect(backupApi.createManualBackup).toHaveBeenCalledTimes(1)
       expect(showToast).toHaveBeenCalledWith(
         expect.stringContaining('Backup "vturb_backup_manual_instant.dump.gz" gerado')
       )
+      // Após a conclusão, o modal deve ser removido
+      expect(screen.queryByTestId('backup-creation-modal')).not.toBeInTheDocument()
     })
   })
 

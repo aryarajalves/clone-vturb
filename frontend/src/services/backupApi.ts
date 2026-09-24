@@ -4,9 +4,9 @@ import type {
   BackupMetrics,
   UpdateSchedulePayload,
 } from '../types/backup'
-import { authHeaders } from './api'
+import { authHeaders, getAuthToken } from './api'
+import { API_BASE, getApiBaseUrl } from './apiConfig'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8003'
 
 export async function fetchBackups(skip = 0, limit = 20): Promise<BackupRecord[]> {
   const res = await fetch(`${API_BASE}/backups/?skip=${skip}&limit=${limit}`, {
@@ -126,5 +126,27 @@ export async function uploadExternalBackup(file: File): Promise<BackupRecord> {
 }
 
 export function getDownloadBackupUrl(backupId: string): string {
-  return `${API_BASE}/backups/${backupId}/download`
+  const token = getAuthToken() || ''
+  const query = token ? `?token=${encodeURIComponent(token)}` : ''
+  return `${API_BASE}/backups/${backupId}/download${query}`
+}
+
+export async function downloadBackupFile(backupId: string, filename: string): Promise<void> {
+  const url = getDownloadBackupUrl(backupId)
+  const res = await fetch(url, {
+    headers: { ...authHeaders() },
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Erro ao baixar arquivo de backup.')
+  }
+  const blob = await res.blob()
+  const blobUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(blobUrl)
 }

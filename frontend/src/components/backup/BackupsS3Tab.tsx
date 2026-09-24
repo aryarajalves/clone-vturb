@@ -472,6 +472,7 @@ export const BackupsS3Tab: React.FC<BackupsS3TabProps> = ({
         isOpen={Boolean(backupToDelete)}
         title="Excluir Backup"
         itemName={backupToDelete?.filename || ''}
+        description={`Tem certeza de que deseja excluir o backup "${backupToDelete?.filename}"? O arquivo do dump será removido permanentemente.`}
         loading={deleteLoading}
         onConfirm={async () => {
           if (backupToDelete) {
@@ -487,6 +488,7 @@ export const BackupsS3Tab: React.FC<BackupsS3TabProps> = ({
         isOpen={showBulkDeleteModal}
         title="Excluir Backups em Lote"
         itemCount={selectedIds.length}
+        description={`Tem certeza de que deseja excluir os ${selectedIds.length} backups selecionados? Todos os arquivos de dump serão removidos permanentemente.`}
         loading={deleteLoading}
         onConfirm={async () => {
           await onBulkDeleteBackups(selectedIds)

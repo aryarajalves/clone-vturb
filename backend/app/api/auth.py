@@ -87,11 +87,14 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         )
 
     official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
-    user.is_super_admin = (user.email.strip().lower() == official_email)
-    if user.is_super_admin:
+    is_super = (
+        user.email.strip().lower() == official_email or
+        bool(user.is_super_admin) or
+        user.role == "super_admin"
+    )
+    if is_super:
+        user.is_super_admin = True
         user.role = "super_admin"
-    elif user.role == "super_admin":
-        user.role = "admin"
 
     access_token = create_access_token(data={
         "sub": user.id,
@@ -113,13 +116,13 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 def get_me(current_user: User = Depends(get_current_user)):
     """Retorna os dados do usuário autenticado a partir do token JWT."""
     official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
-    if current_user.email.strip().lower() == official_email:
+    if (
+        current_user.email.strip().lower() == official_email or
+        bool(current_user.is_super_admin) or
+        current_user.role == "super_admin"
+    ):
         current_user.is_super_admin = True
         current_user.role = "super_admin"
-    else:
-        current_user.is_super_admin = False
-        if current_user.role == "super_admin":
-            current_user.role = "admin"
     resp = UserResponse.model_validate(current_user)
     resp.name = resolve_display_name(current_user, current_user.is_super_admin)
     return resp

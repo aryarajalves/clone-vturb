@@ -16,9 +16,11 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
 - **Modo Turbo (Acelerador de Velocidade)**:
   - Velocidades predefinidas de `0.5x` até `2.0x` com controle fino via slider.
   - Switch de ativação/desativação integrado com prévia interativa ao vivo.
-- **Smart Autoplay™**:
-  - Inicia o vídeo automaticamente mudo para contornar o bloqueio de navegadores e exibe uma chamada animada para o visitante ativar o som.
-  - Personalização de textos, cores do botão, opção de reiniciar o vídeo ao desmutar e prévia em tempo real.
+- **Smart Autoplay™ & Autoplay Direto com Som**:
+  - **Smart Autoplay™ (Padrão)**: Inicia o vídeo automaticamente mudo para contornar o bloqueio de navegadores e exibe uma chamada animada para o visitante ativar o som, com personalização de texto, cores, tamanhos e opção de reiniciar o vídeo ao desmutar.
+  - **Autoplay Direto com Som**: Inicia imediatamente com áudio ligado sem sobreposições na tela para visitantes com permissão de áudio autônomo (MEI). Caso o navegador silencie o som no primeiro segundo, exibe um badge discreto e elegante com botão para ativar o som de imediato com 1 clique.
+  - **Personalização Total do Badge**: Controle de texto do aviso, texto do botão ("OUVIR", "LIGAR ÁUDIO") e seletor de cores com prévia dinâmica ao vivo.
+  - **Embeds Otimizados com Iframe Permissions**: Códigos embed gerados com `allow="autoplay *; fullscreen *; encrypted-media *"` e listener de desbloqueio inteligente.
 - **Player Flutuante (Picture-in-Picture / Mini-Player)**:
   - Mantém o vídeo reproduzindo no canto inferior (direito ou esquerdo) enquanto o visitante rola a página de vendas.
   - Ajuste dinâmico de largura e botão para fechar o mini-player.
@@ -74,11 +76,11 @@ Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodu�
 ### 💾 Backup Automático no S3 (Backblaze B2)
 - **Acesso Restrito ao Super Admin**: O botão "Backup Automático" fica posicionado **logo acima** de "Gestão de Usuário" na barra lateral e é exibido estritamente para o Super Admin oficial (`is_super_admin: true`).
 - **Identidade Estética Alinhada ao VTurb**: Interface com tema claro premium (`#f8fafc` / `#ffffff`), cartões com cantos arredondados, sombras sutis e acentos em azul `#0284c7`.
-- **Cards de Métricas Superiores**: Exibição em tempo real do **Último Backup** (data/hora formatada e nome do arquivo), **Próximo Backup** (horário previsto e frequência configurada) e **Retenção no S3 / B2** (quantidade de backups atuais vs limite configurado e espaço em disco consumido).
+- **Cards de Métricas Superiores**: Exibição em tempo real do **Último Backup** (data/hora formatada e nome do arquivo), **Próximo Backup** (horário previsto e frequência configurada), **Retenção no S3 / B2** e o novo card de **Status do Backblaze B2** (Conectado / Desconectado com aviso de pendência).
 - **Três Abas Especializadas**:
   1. **Backups no S3**:
-     - Card de execução imediata com botão **"Fazer Backup Agora"** que gera dump compactado em `.dump.gz` e envia para o bucket B2.
-     - Tabela completa de snapshots com seleção múltipla, paginação em até 20 itens, download direto do arquivo, restauração do banco com modal de confirmação e exclusão individual/em lote com modal centralizado.
+     - Card de execução imediata com botão **"Fazer Backup Agora"** que abre popup modal centralizado com indicador visual de progresso e barra de status em tempo real, gerando dump compactado com sufixo `_manual.dump.gz` para identificação visual clara na tabela (Manual vs Automático vs Importado).
+     - Tabela completa de snapshots com seleção múltipla, paginação em até 20 itens, download autenticado direto do arquivo (`.dump.gz`), restauração do banco e exclusão protegida com bloqueio inteligente caso o Backblaze B2 não esteja conectado.
   2. **Agendamento Automático**:
      - Toggle de ativação/pausa da rotina periódica.
      - Frequência de execução configurável (1h, 3h, 6h, 12h, 24h, 48h, 7 dias).
@@ -162,6 +164,22 @@ npm install
 npm run dev
 ```
 Acesse a aplicação no navegador em: `http://localhost:5175`
+
+### 4. Executando em Produção com Docker Compose (Apenas Backend e Frontend)
+A stack de produção foi concebida exclusivamente com os serviços do **Backend** (Uvicorn multi-worker sem reload) e **Frontend** (Build estática de alta performance servida via Nginx Alpine com Gzip e SPA Fallback):
+```bash
+# 1. Copie o modelo de variáveis de ambiente de produção
+cp .env.production.example .env.production
+
+# 2. Ajuste a URL do banco PostgreSQL de produção e suas credenciais no .env.production
+
+# 3. Suba os contêineres de produção
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+
+# 4. Validar os serviços
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+```
+
 
 ---
 

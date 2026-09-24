@@ -9,8 +9,9 @@ import type {
   SendVerificationCodePayload,
   BulkDeleteResponse,
 } from '../types/auth'
+import { getApiBaseUrl, API_BASE } from './apiConfig'
+export { getApiBaseUrl, API_BASE }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8003'
 const TOKEN_KEY = 'vturb_access_token'
 
 export function getAuthToken(): string | null {

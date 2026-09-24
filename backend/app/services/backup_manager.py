@@ -30,13 +30,14 @@ class BackupManager:
         }
 
     @classmethod
-    def create_database_dump(cls, db: Session) -> BackupRecord:
+    def create_database_dump(cls, db: Session, is_manual: bool = False) -> BackupRecord:
         """
         Executa snapshot do banco PostgreSQL, compacta com gzip e envia para o Backblaze B2.
         """
         now = datetime.now(timezone.utc)
         timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
-        filename = f"vturb_backup_{timestamp_str}.dump.gz"
+        tag = "_manual" if is_manual else "_auto"
+        filename = f"vturb_backup_{timestamp_str}{tag}.dump.gz"
 
         db_params = cls._parse_db_url()
         schedule = db.query(BackupSchedule).first()
