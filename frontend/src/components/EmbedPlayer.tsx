@@ -19,22 +19,14 @@ interface EmbedPlayerProps {
 
 export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
   const [video, setVideo] = useState<Video | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isMuted, setIsMuted] = useState(false)
-  const [volumeLevel, setVolumeLevel] = useState(1.0)
-  const [showCta, setShowCta] = useState(false)
+  const [loading, setLoading] = useState(true), [error, setError] = useState<string | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false), [isMuted, setIsMuted] = useState(false)
+  const [volumeLevel, setVolumeLevel] = useState(1.0), [showCta, setShowCta] = useState(false)
   const domainBlocked = useDomainProtection(video)
-  const [isSmartAutoplaying, setIsSmartAutoplaying] = useState(false)
-  const [showDirectUnmuteBanner, setShowDirectUnmuteBanner] = useState(false)
-  const [isVideoReady, setIsVideoReady] = useState(false)
-  const [isFloating, setIsFloating] = useState(false)
-  const [floatingDismissed, setFloatingDismissed] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [currentSpeed, setCurrentSpeed] = useState(1.0)
-  const [areControlsVisible, setAreControlsVisible] = useState(true)
+  const [isSmartAutoplaying, setIsSmartAutoplaying] = useState(false), [showDirectUnmuteBanner, setShowDirectUnmuteBanner] = useState(false)
+  const [isVideoReady, setIsVideoReady] = useState(false), [isFloating, setIsFloating] = useState(false), [floatingDismissed, setFloatingDismissed] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0), [duration, setDuration] = useState(0), [currentSpeed, setCurrentSpeed] = useState(1.0)
+  const [areControlsVisible, setAreControlsVisible] = useState(true), [isFullscreen, setIsFullscreen] = useState(false)
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [visitorId] = useState(() => {
@@ -275,6 +267,12 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     else document.exitFullscreen().catch(() => {})
   }
 
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement))
+    document.addEventListener('fullscreenchange', onFs)
+    return () => document.removeEventListener('fullscreenchange', onFs)
+  }, [])
+
   const resetControlsVisibilityTimeout = () => {
     setAreControlsVisible(true)
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
@@ -308,18 +306,18 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
         bottom: isFloatingActive ? '24px' : undefined,
         right: isFloatingActive ? (floatingConfig?.position === 'bottom-left' ? undefined : '24px') : undefined,
         left: isFloatingActive ? (floatingConfig?.position === 'bottom-left' ? '24px' : undefined) : undefined,
-        width: isFloatingActive ? `${floatingConfig?.width || 320}px` : '100%',
-        maxWidth: isFloatingActive ? undefined : !isInsideIframe ? (configuredWidth ? (configuredWidth.endsWith('px') || configuredWidth.endsWith('%') ? configuredWidth : `${configuredWidth}px`) : (effectiveRatio === '9:16' ? '450px' : '100%')) : '100%',
-        aspectRatio: isFloatingActive ? '16/9' : (isInsideIframe ? undefined : (effectiveRatio === '9:16' ? '9/16' : effectiveRatio === '4:3' ? '4/3' : undefined)),
+        width: isFullscreen ? '100vw' : isFloatingActive ? `${floatingConfig?.width || 320}px` : '100%',
+        maxWidth: isFullscreen ? 'none' : isFloatingActive ? undefined : !isInsideIframe ? (configuredWidth ? (configuredWidth.endsWith('px') || configuredWidth.endsWith('%') ? configuredWidth : `${configuredWidth}px`) : (effectiveRatio === '9:16' ? '450px' : '100%')) : '100%',
+        aspectRatio: isFullscreen ? undefined : isFloatingActive ? '16/9' : (isInsideIframe ? undefined : (effectiveRatio === '9:16' ? '9/16' : effectiveRatio === '4:3' ? '4/3' : undefined)),
         margin: isFloatingActive ? undefined : '0 auto',
-        height: isFloatingActive ? `${Math.round((floatingConfig?.width || 320) * 9 / 16)}px` : '100%',
-        minHeight: isFloatingActive ? `${Math.round((floatingConfig?.width || 320) * 9 / 16)}px` : '100%',
-        maxHeight: isFloatingActive ? `${Math.round((floatingConfig?.width || 320) * 9 / 16)}px` : (!isInsideIframe && effectiveRatio === '9:16' ? '92vh' : undefined),
+        height: isFullscreen ? '100vh' : isFloatingActive ? `${Math.round((floatingConfig?.width || 320) * 9 / 16)}px` : '100%',
+        minHeight: isFullscreen ? '100vh' : isFloatingActive ? `${Math.round((floatingConfig?.width || 320) * 9 / 16)}px` : '100%',
+        maxHeight: isFullscreen ? 'none' : isFloatingActive ? `${Math.round((floatingConfig?.width || 320) * 9 / 16)}px` : (!isInsideIframe && effectiveRatio === '9:16' ? '92vh' : undefined),
         zIndex: isFloatingActive ? 9999 : 1,
-        borderRadius: isFloatingActive ? '16px' : `${video.player_settings?.border_radius ?? 0}px`,
-        boxShadow: isFloatingActive ? '0 20px 45px rgba(0, 0, 0, 0.75), 0 0 0 2px rgba(255, 255, 255, 0.1)' : 'none',
+        borderRadius: isFullscreen ? '0px' : isFloatingActive ? '16px' : `${video.player_settings?.border_radius ?? 0}px`,
+        boxShadow: isFloatingActive && !isFullscreen ? '0 20px 45px rgba(0, 0, 0, 0.75), 0 0 0 2px rgba(255, 255, 255, 0.1)' : 'none',
         transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-        background: isTransparent && isVideoReady ? 'transparent' : '#000000',
+        background: isFullscreen ? '#000000' : isTransparent && isVideoReady ? 'transparent' : '#000000',
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
@@ -409,9 +407,9 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
         style={{
           width: '100%',
           height: '100%',
-          objectFit: video.player_settings?.fit_mode || 'contain',
+          objectFit: isFullscreen ? 'contain' : (video.player_settings?.fit_mode || 'contain'),
           cursor: 'pointer',
-          backgroundColor: isTransparent && isVideoReady ? 'transparent' : '#000000',
+          backgroundColor: isFullscreen ? '#000000' : isTransparent && isVideoReady ? 'transparent' : '#000000',
         }}
         playsInline
       />

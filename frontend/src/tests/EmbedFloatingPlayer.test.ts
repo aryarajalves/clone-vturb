@@ -59,6 +59,9 @@ describe('embedScriptGenerator and Floating Player Integration', () => {
     // Deve resetar top para auto e aplicar bottom: 24px para evitar ficar preso no topo
     expect(code).toContain("ifr.style.top = 'auto';")
     expect(code).toContain("ifr.style.bottom = '24px';")
+    // Deve detectar proporcao vertical 9:16
+    expect(code).toContain("var videoRatio = '9:16';")
+    expect(code).toContain("var isVertical = videoRatio === '9:16';")
   })
 
   it('respeita configuração quando o player flutuante está desativado', () => {

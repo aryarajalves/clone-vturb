@@ -109,7 +109,9 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
       isCurrentlyFloating = shouldFloat
 
       if (shouldFloat) {
-        const floatHeight = Math.round((floatingWidth * 9) / 16)
+        const isVertical = effectiveRatio === '9:16'
+        const actualWidth = isVertical ? Math.min(floatingWidth, 200) : floatingWidth
+        const floatHeight = isVertical ? Math.round((actualWidth * 16) / 9) : Math.round((actualWidth * 9) / 16)
         ifr.style.position = 'fixed'
         ifr.style.top = 'auto'
         ifr.style.bottom = '24px'
@@ -120,7 +122,7 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
           ifr.style.right = '24px'
           ifr.style.left = 'auto'
         }
-        ifr.style.width = `${floatingWidth}px`
+        ifr.style.width = `${actualWidth}px`
         ifr.style.height = `${floatHeight}px`
         ifr.style.zIndex = '99999'
         ifr.style.backgroundColor = '#000000'
@@ -133,7 +135,7 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
           closeBtn.style.top = 'auto'
           closeBtn.style.bottom = `${24 + floatHeight - 14}px`
           if (floatingPos === 'bottom-left') {
-            closeBtn.style.left = `${24 + floatingWidth - 14}px`
+            closeBtn.style.left = `${24 + actualWidth - 14}px`
             closeBtn.style.right = 'auto'
           } else {
             closeBtn.style.right = '16px'
