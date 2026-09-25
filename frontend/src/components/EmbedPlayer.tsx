@@ -120,11 +120,10 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     : (rawRatio === '4:3' ? '4:3' : (rawRatio === '16:9' ? '16:9' : video?.player_settings?.aspect_ratio || '16:9'))
   const configuredWidth = queryParams.get('width') || queryParams.get('max_width') || video?.player_settings?.default_width
 
-  const isTransparent = isInsideIframe && Boolean(
-    video?.player_settings?.transparent_background ||
-    queryParams.get('transparent') === '1' ||
-    queryParams.get('transparent') === 'true'
-  )
+  const trParam = queryParams.get('transparent')
+  const isTransparent = trParam !== null
+    ? (trParam === '1' || trParam === 'true')
+    : (video?.player_settings?.transparent_background ?? true)
 
   // Ativa transparência somente após o primeiro frame real do vídeo estar pintado na tela
   useEffect(() => {
@@ -407,7 +406,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
         style={{
           width: '100%',
           height: '100%',
-          objectFit: isFullscreen ? 'contain' : (video.player_settings?.fit_mode || 'contain'),
+          objectFit: isFullscreen || !isTransparent ? 'contain' : (video.player_settings?.fit_mode || 'contain'),
           cursor: 'pointer',
           backgroundColor: isFullscreen ? '#000000' : isTransparent && isVideoReady ? 'transparent' : '#000000',
         }}

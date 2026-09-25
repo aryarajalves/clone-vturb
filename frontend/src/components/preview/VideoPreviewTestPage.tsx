@@ -27,7 +27,11 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
   const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
   const rawRatio = queryParams.get('ratio') || '16:9'
   const rawWidth = queryParams.get('width') || '640px'
-  const isTransparent = queryParams.get('transparent') === '1' || queryParams.get('transparent') === 'true'
+  const rawHeight = queryParams.get('height')
+  const transparentParam = queryParams.get('transparent')
+  const isTransparent = transparentParam !== null
+    ? (transparentParam === '1' || transparentParam === 'true')
+    : Boolean(video?.player_settings?.transparent_background ?? true)
 
   useEffect(() => {
     let isMounted = true
@@ -48,10 +52,18 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
     }
   }, [videoId])
 
-  const effectiveRatio = rawRatio === '9:16' ? '9:16' : rawRatio === '4:3' ? '4:3' : '16:9'
-  const paddingTop = effectiveRatio === '9:16' ? '177.77%' : effectiveRatio === '4:3' ? '75%' : '56.25%'
+  const effectiveRatio = (rawRatio === '9:16' || rawRatio === '9-16' || rawRatio === '9/16')
+    ? '9:16'
+    : (rawRatio === '4:3' ? '4:3' : (rawRatio === 'custom' || rawHeight ? 'custom' : '16:9'))
+  const paddingTop = rawHeight || effectiveRatio === 'custom'
+    ? '0'
+    : effectiveRatio === '9:16'
+    ? '177.77%'
+    : effectiveRatio === '4:3'
+    ? '75%'
+    : '56.25%'
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const embedSrc = `${origin}/?embed=${videoId}&ratio=${effectiveRatio}&width=${encodeURIComponent(rawWidth)}${isTransparent ? '&transparent=1' : ''}`
+  const embedSrc = `${origin}/?embed=${videoId}&ratio=${effectiveRatio}&width=${encodeURIComponent(rawWidth)}&transparent=${isTransparent ? '1' : '0'}${rawHeight ? `&height=${encodeURIComponent(rawHeight)}` : ''}`
 
   // Configuração do Player Flutuante e Pitch Delay no site de teste
   useEffect(() => {
@@ -281,7 +293,7 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.82rem', color: '#94a3b8' }}>
-          <span>Dimensão: <strong style={{ color: '#fff' }}>{rawWidth}</strong> ({effectiveRatio})</span>
+          <span>Dimensão: <strong style={{ color: '#fff' }}>{rawWidth}</strong> ({rawHeight ? `${rawHeight} fixa` : effectiveRatio}) {isTransparent ? '• Sem Fundo' : '• Cinema'}</span>
           <span style={{ opacity: 0.3 }}>|</span>
           <span style={{ color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
             💡 Role a página para testar o player flutuante
@@ -290,7 +302,7 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
       </header>
 
       {/* Conteúdo da Landing Page de Teste */}
-      <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '2.5rem 1.5rem 5rem' }}>
+      <main style={{ maxWidth: rawWidth === '100%' ? '100%' : '1000px', margin: '0 auto', padding: '2.5rem 1.5rem 5rem' }}>
         {/* Seção Hero: Título VSL */}
         <section style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)', padding: '0.35rem 0.85rem', borderRadius: '999px', color: '#a5b4fc', fontSize: '0.82rem', fontWeight: 600, marginBottom: '1.25rem' }}>
@@ -312,12 +324,21 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
             style={{
               maxWidth: rawWidth,
               width: '100%',
+              height: rawHeight || 'auto',
               margin: '0 auto',
               position: 'relative',
-              background: 'transparent',
+              background: isTransparent ? 'transparent' : '#000000',
+              borderRadius: `${video.player_settings?.border_radius ?? 12}px`,
+              overflow: 'hidden',
             }}
           >
-            <div style={{ position: 'relative', width: '100%', paddingTop, background: 'transparent' }}>
+            <div style={{
+              position: 'relative',
+              width: '100%',
+              height: rawHeight ? '100%' : 'auto',
+              paddingTop: rawHeight ? 0 : paddingTop,
+              background: isTransparent ? 'transparent' : '#000000',
+            }}>
               <iframe
                 src={embedSrc}
                 data-testid="preview-test-iframe"
@@ -329,7 +350,7 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
                   height: '100%',
                   border: 0,
                   borderRadius: `${video.player_settings?.border_radius ?? 12}px`,
-                  background: 'transparent',
+                  background: isTransparent ? 'transparent' : '#000000',
                 }}
                 allow="autoplay *; fullscreen *; encrypted-media *"
                 allowFullScreen

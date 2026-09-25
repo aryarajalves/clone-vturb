@@ -80,7 +80,7 @@ describe('VideoPreviewTestPage - Página de Teste Completa com Scroll', () => {
     expect(screen.getByText(/Garantia Incondicional de 7 Dias/i)).toBeInTheDocument()
   })
 
-  it('VideoEmbedTab: botão "Abrir em nova aba" aponta para a URL com preview da página de teste', () => {
+  it('VideoEmbedTab: botão "Abrir em nova aba" aponta para a URL com preview da página de teste e parâmetros sincronizados', () => {
     render(
       <VideoEmbedTab
         video={mockVideo}
@@ -91,6 +91,64 @@ describe('VideoPreviewTestPage - Página de Teste Completa com Scroll', () => {
     const openLink = screen.getByTestId('open-preview-tab-btn') as HTMLAnchorElement
     expect(openLink).toBeInTheDocument()
     expect(openLink.href).toContain('preview=preview-test-video-123')
+    expect(decodeURIComponent(openLink.href)).toContain('ratio=9:16')
+    expect(openLink.href).toContain('width=640px')
     expect(openLink.target).toBe('_blank')
+  })
+
+  it('aplica corretamente formato vertical 9:16 e modo cinema (fundo preto) recebidos via query params', async () => {
+    // Simula query parameters da URL
+    const originalLocation = window.location
+    delete (window as any).location
+    window.location = {
+      ...originalLocation,
+      origin: 'http://localhost:3000',
+      search: '?preview=preview-test-video-123&ratio=9:16&width=360px&transparent=0',
+    } as any
+
+    render(<VideoPreviewTestPage videoId="preview-test-video-123" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-test-wrapper')).toBeInTheDocument()
+    })
+
+    const wrapper = screen.getByTestId('preview-test-wrapper')
+    expect(wrapper.style.maxWidth).toBe('360px')
+    expect(wrapper.style.background).toBe('rgb(0, 0, 0)')
+
+    const iframe = screen.getByTestId('preview-test-iframe') as HTMLIFrameElement
+    expect(decodeURIComponent(iframe.src)).toContain('ratio=9:16')
+    expect(iframe.src).toContain('transparent=0')
+    expect(iframe.src).toContain('width=360px')
+
+    // Restaura window.location
+    window.location = originalLocation
+  })
+
+  it('aplica altura fixa e 100% responsivo quando especificado nos query params', async () => {
+    const originalLocation = window.location
+    delete (window as any).location
+    window.location = {
+      ...originalLocation,
+      origin: 'http://localhost:3000',
+      search: '?preview=preview-test-video-123&ratio=custom&width=100%25&height=520px&transparent=1',
+    } as any
+
+    render(<VideoPreviewTestPage videoId="preview-test-video-123" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-test-wrapper')).toBeInTheDocument()
+    })
+
+    const wrapper = screen.getByTestId('preview-test-wrapper')
+    expect(wrapper.style.maxWidth).toBe('100%')
+    expect(wrapper.style.height).toBe('520px')
+    expect(wrapper.style.background).toBe('transparent')
+
+    const iframe = screen.getByTestId('preview-test-iframe') as HTMLIFrameElement
+    expect(iframe.src).toContain('height=520px')
+    expect(iframe.src).toContain('transparent=1')
+
+    window.location = originalLocation
   })
 })

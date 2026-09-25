@@ -215,10 +215,10 @@ export function generateEmbedCode({
 
   const isTransparent = Boolean(transparentBg ?? video.player_settings?.transparent_background)
   let finalEmbedUrl = embedUrl
-  if (isTransparent && !finalEmbedUrl.includes('transparent=')) {
-    finalEmbedUrl += (finalEmbedUrl.includes('?') ? '&' : '?') + 'transparent=1'
+  if (!finalEmbedUrl.includes('transparent=')) {
+    finalEmbedUrl += (finalEmbedUrl.includes('?') ? '&' : '?') + (isTransparent ? 'transparent=1' : 'transparent=0')
   }
-  const bgStyle = isTransparent ? 'background:transparent;' : ''
+  const bgStyle = isTransparent ? 'background:transparent;' : 'background:#000000;'
   const allowTransp = isTransparent ? ' allowtransparency="true"' : ''
 
   let iframeInner = ''

@@ -40,8 +40,9 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast, 
       : null
 
   const origin = window.location.origin
-  const embedUrl = `${origin}/?embed=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}${transparentBg ? '&transparent=1' : ''}`
-  const previewTestUrl = `${origin}/?preview=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}${transparentBg ? '&transparent=1' : ''}`
+  const heightQuery = heightPreset === 'custom' && resolvedHeight ? `&height=${encodeURIComponent(resolvedHeight)}` : ''
+  const embedUrl = `${origin}/?embed=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}&transparent=${transparentBg ? '1' : '0'}${heightQuery}`
+  const previewTestUrl = `${origin}/?preview=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}&transparent=${transparentBg ? '1' : '0'}${heightQuery}`
 
   const paddingTopMap: Record<string, string> = {
     '16:9': '56.25%',
