@@ -1,6 +1,6 @@
-# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.7`
+# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.8`
 
-[![Versão](https://img.shields.io/badge/versão-1.0.7-blue.svg)](README.md)
+[![Versão](https://img.shields.io/badge/versão-1.0.8-blue.svg)](README.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker/docker-compose-prod.yml)
 [![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
@@ -220,8 +220,27 @@ npm test
 
 | Imagem | Versão Atual | Descrição |
 |---|---|---|
-| `aryalvesfernandes/clone-vturb:frontend-1.0.7` | `1.0.7` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
-| `aryalvesfernandes/clone-vturb:backend-1.0.7` | `1.0.7` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+| `aryalvesfernandes/clone-vturb:frontend-1.0.8` | `1.0.8` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
+| `aryalvesfernandes/clone-vturb:backend-1.0.8` | `1.0.8` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+
+### 🚀 Novidades da Versão 1.0.8
+- **Refatoração Global de Clean Code & Modularização Arquitetural**:
+  - Eliminação de todos os arquivos monolíticos acima de 500 linhas em 100% do projeto.
+  - **Modularização de `EmbedPlayer.tsx`**: Extração de hooks especializados (`useEmbedPlayback`, `useEmbedFloatingPlayer`, `useEmbedTransparency`), submódulos visuais (`EmbedBufferingOverlay`, `EmbedFloatingCloseButton`) e utilitários puros de estilo e dimensões (`embedPlayerHelpers.ts`). Redução de 498 para 260 linhas.
+  - **Modularização de `StylingVideoPreview.tsx`**: Extração de `StylingPreviewHeader`, `StylingBigPlayButton`, `StylingProgressBar`, `StylingPlayerControlsBar`, `useStylingPreviewPlayer` e `stylingPreviewHelpers.ts`. Redução de 488 para 153 linhas.
+  - **Modularização de `VideoPreviewTestPage.tsx`**: Extração de `PreviewTopHeader`, `PreviewPlayerWrapper`, `PreviewMockLandingPageSections` e `useFloatingPlayerObserver`. Redução de 492 para 119 linhas.
+  - **Modularização de `InvitesTable.tsx`**: Extração de `InviteTableRow`, `InvitesBulkActionsBar`, `InvitesPagination` e `inviteFormatters.ts`. Redução de 485 para 149 linhas.
+  - **Modularização de `VideoEmbedTab.tsx`**: Extração de `EmbedDimensionControls`, `EmbedLivePreviewCard`, `EmbedCodeSnippetBox` e `embedDimensionHelpers.ts`. Redução de 492 para 158 linhas.
+  - **Modularização de `VideoCreateView.tsx`**: Extração de `VideoSourceSection`, `ThumbnailSourceSection`, `VideoCreateHeader`, `PlayerQuickSettings`. Redução de 667 para 281 linhas.
+  - **Modularização de `BackupsS3Tab.tsx`**: Extração de `BackupHistoryTable`, `RestoreBackupModal`, `ManualBackupHeader` e `backupFormatters.ts`. Redução de 603 para 122 linhas.
+  - **Modularização de `VTurbRetentionChart.tsx`**: Extração de `RetentionChartCanvas`, `RetentionChartNavbar`, `RetentionChartScrubber` e `retentionChartHelpers.ts`. Redução de 534 para 189 linhas.
+- **Centralização de Infraestrutura e Limpeza da Raiz**:
+  - Centralização de arquivos de ambiente de produção (`.env.production`, `.env.production.example`, `docker-compose.prod.yml`) dentro da pasta estruturada `docker/`.
+- **Expansão da Suíte de Testes Automatizados**:
+  - Frontend ampliado para **39 suítes de teste** e **193 testes unitários** (Vitest) 100% aprovados.
+  - Backend com **41 testes unitários** (Pytest) 100% aprovados.
+  - Auditoria automatizada de dependências de segurança (`audit_security.py`) com **0 vulnerabilidades** no backend (pip-audit) e frontend (npm audit).
+  - Ajuste de estabilidade no timeout dos testes para 20.000ms no `vite.config.ts`.
 
 ### 🚀 Novidades da Versão 1.0.7
 - **Injeção Autônoma e Completa de Pixels de Conversão**:
@@ -257,3 +276,4 @@ npm test
 - **Compatibilidade Iframe & CSP**: Configuração Nginx com `Content-Security-Policy: frame-ancestors *;` para permitir incorporação em qualquer domínio;
 - **Player Flutuante (Picture-in-Picture)**: Suporte completo tanto em páginas com o player incorporado diretamente quanto em iframes com script wrapper e `IntersectionObserver`;
 - **Controles Customizados Dinâmicos**: Barra de progresso, botão de play, volume com slider e tempo do vídeo com respeito rigoroso às configurações de exibição/ocultação do painel.
+
