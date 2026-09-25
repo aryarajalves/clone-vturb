@@ -55,6 +55,9 @@ describe('embedScriptGenerator and Floating Player Integration', () => {
     // Deve conter o observer de visibilidade
     expect(code).toContain('IntersectionObserver')
     expect(code).toContain('updateFloatingState()')
+    // Deve resetar top para auto e aplicar bottom: 24px para evitar ficar preso no topo
+    expect(code).toContain("ifr.style.top = 'auto';")
+    expect(code).toContain("ifr.style.bottom = '24px';")
   })
 
   it('respeita configuração quando o player flutuante está desativado', () => {

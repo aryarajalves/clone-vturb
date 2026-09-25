@@ -130,6 +130,7 @@ export function generateEmbedCode({
       if (shouldFloat) {
         var floatHeight = Math.round(floatingWidth * 9 / 16);
         ifr.style.position = 'fixed';
+        ifr.style.top = 'auto';
         ifr.style.bottom = '24px';
         if (floatingPos === 'bottom-left') {
           ifr.style.left = '24px';
@@ -148,6 +149,7 @@ export function generateEmbedCode({
 
         if (closeBtn) {
           closeBtn.style.display = 'flex';
+          closeBtn.style.top = 'auto';
           closeBtn.style.bottom = (24 + floatHeight - 14) + 'px';
           if (floatingPos === 'bottom-left') {
             closeBtn.style.left = (24 + floatingWidth - 14) + 'px';
