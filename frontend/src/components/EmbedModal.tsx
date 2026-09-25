@@ -24,7 +24,6 @@ export const EmbedModal: React.FC<EmbedModalProps> = ({ video, isOpen, onClose }
 
   const origin = window.location.origin
   const embedUrl = `${origin}/?embed=${video.id}`
-  const previewTestUrl = `${origin}/?preview=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}`
 
   // Resolução de dimensões calculadas
   const resolvedWidth =
@@ -42,6 +41,8 @@ export const EmbedModal: React.FC<EmbedModalProps> = ({ video, isOpen, onClose }
         ? customHeight.trim()
         : `${customHeight.trim()}px`
       : null
+
+  const previewTestUrl = `${origin}/?preview=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}`
 
   const paddingTopMap: Record<string, string> = {
     '16:9': '56.25%',

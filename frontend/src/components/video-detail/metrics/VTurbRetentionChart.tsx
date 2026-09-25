@@ -53,7 +53,8 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
   }
 
   // Interpolação para o modo de retenção baseada em espectadores reais
-  const audienceBase = metrics.unique_plays > 0 ? metrics.unique_plays : totalPlays
+  const uniquePlaysCount = metrics.unique_plays ?? 0
+  const audienceBase = uniquePlaysCount > 0 ? uniquePlaysCount : totalPlays
 
   const getInterpolatedRetention = (pct: number) => {
     if (totalPlays === 0) return { retention: 0, audience: 0 }
@@ -74,7 +75,7 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
     }
 
     const finalRet = Math.max(0, Math.min(100, ret))
-    const aud = Math.round((finalRet / 100) * audienceBase)
+    const aud = Math.round((finalRet / 100) * (audienceBase || 0))
 
     return {
       retention: finalRet,
