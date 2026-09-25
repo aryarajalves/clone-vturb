@@ -1,7 +1,7 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import type { Video } from '../types/video'
 import { sendTelemetryEvent } from '../services/api'
-import { triggerTrackingPixels } from '../utils/embedTracking'
+import { triggerTrackingPixels, initTrackingPixels } from '../utils/embedTracking'
 
 interface UseVideoTelemetryProps {
   video: Video | null
@@ -20,6 +20,14 @@ export function useVideoTelemetry({
   const pixelEventsSent = useRef<{ [key: string]: boolean }>({})
   const pitchDelaySent = useRef(false)
   const impressionSent = useRef(false)
+  const pixelsInitialized = useRef(false)
+
+  useEffect(() => {
+    if (video?.player_settings?.tracking_pixels?.enabled && !pixelsInitialized.current) {
+      pixelsInitialized.current = true
+      initTrackingPixels(video.player_settings.tracking_pixels)
+    }
+  }, [video])
 
   const dispatchPixelEvent = (triggerKey: 'percent_25' | 'percent_50' | 'percent_75' | 'percent_100' | 'pitch') => {
     if (pixelEventsSent.current[triggerKey]) return

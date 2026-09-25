@@ -1,6 +1,6 @@
-# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.6`
+# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.7`
 
-[![Versão](https://img.shields.io/badge/versão-1.0.6-blue.svg)](README.md)
+[![Versão](https://img.shields.io/badge/versão-1.0.7-blue.svg)](README.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.prod.yml)
 [![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
@@ -220,8 +220,23 @@ npm test
 
 | Imagem | Versão Atual | Descrição |
 |---|---|---|
-| `aryalvesfernandes/clone-vturb:frontend-1.0.6` | `1.0.6` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
-| `aryalvesfernandes/clone-vturb:backend-1.0.6` | `1.0.6` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+| `aryalvesfernandes/clone-vturb:frontend-1.0.7` | `1.0.7` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
+| `aryalvesfernandes/clone-vturb:backend-1.0.7` | `1.0.7` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+
+### 🚀 Novidades da Versão 1.0.7
+- **Injeção Autônoma e Completa de Pixels de Conversão**:
+  - Injeção dinâmica e automática dos SDKs oficiais das 3 plataformas líderes de tráfego pago:
+    - **Meta Pixel (Facebook)**: Carregamento assíncrono oficial `fbevents.js`, inicialização com `fbq('init')` e disparo automático de `PageView`;
+    - **Google Tag (Analytics & Google Ads)**: Injeção de `gtag/js?id=...`, inicialização de `window.dataLayer` e disparo automático do evento `config`;
+    - **TikTok Pixel**: Instalação assíncrona oficial `events.js`, inicialização de métodos diferidos via `ttq.load()` e disparo de `ttq.page()`.
+  - **Disparos em Tempo Real nos Marcos do Vídeo**:
+    - Disparo de eventos aos **25%** (`percent_25`), **50%** (`percent_50`), **75%** (`percent_75`), **100%** (`percent_100`) e no momento exato do **Pitch de Vendas** (`pitch`).
+    - Nomes de eventos customizáveis diretamente pelo painel do editor de vídeo.
+    - Disparo direto nos SDKs dentro do player e retransmissão via `postMessage` (`VTURB_PIXEL_TRACK`) para a página de vendas externa.
+  - **Suporte Autônomo no Código Embed de Landing Pages**:
+    - O código gerado em `embedScriptGenerator` agora detecta se a landing page já possui os pixels instalados. Caso não possua, instala de forma transparente e autônoma os SDKs necessários, garantindo que o rastreamento funcione perfeitamente mesmo em páginas externas limpas.
+- **Suíte de Testes Automatizados Expandida**:
+  - 150 testes unitários frontend (Vitest) e 41 testes backend (Pytest) 100% aprovados.
 
 ### 🚀 Novidades da Versão 1.0.6
 - **Modo "Apenas o Vídeo" (`transparent_background`)**:
