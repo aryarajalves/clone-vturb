@@ -179,6 +179,7 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
         entries.forEach((entry) => {
           const rect = entry.boundingClientRect
           const pastTop = rect.bottom < 80
+          if (!pastTop || entry.intersectionRatio > 0.35) isFloatingDismissed = false
           if (!isCurrentlyFloating) {
             if (pastTop && entry.intersectionRatio < 0.15) {
               updateFloatingState(true)

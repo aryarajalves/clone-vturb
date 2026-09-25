@@ -64,6 +64,9 @@ describe('embedScriptGenerator and Floating Player Integration', () => {
     // Deve detectar proporcao vertical 9:16
     expect(code).toContain("var videoRatio = '9:16';")
     expect(code).toContain("var isVertical = videoRatio === '9:16';")
+    // Deve resetar isFloatingDismissed quando o usuario rolar de volta para o topo do video
+    expect(code).toContain("if (!pastTop || entry.intersectionRatio > 0.35)")
+    expect(code).toContain("isFloatingDismissed = false;")
   })
 
   it('respeita configuração quando o player flutuante está desativado', () => {

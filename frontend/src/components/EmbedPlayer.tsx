@@ -100,18 +100,23 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
   useEffect(() => {
     const floating = video?.player_settings?.floating_player
-    if (!floating?.enabled || floatingDismissed || !containerRef.current || isInsideIframe) return
+    if (!floating?.enabled || !containerRef.current || isInsideIframe) return
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIsFloating(!entry.isIntersecting)
+        if (entry.isIntersecting) {
+          setFloatingDismissed(false)
+          setIsFloating(false)
+        } else {
+          setIsFloating(true)
+        }
       },
       { threshold: 0.15 }
     )
 
     observer.observe(containerRef.current)
     return () => observer.disconnect()
-  }, [video, floatingDismissed, isInsideIframe])
+  }, [video, isInsideIframe])
 
   const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
   const rawRatio = queryParams.get('ratio') || queryParams.get('aspect_ratio')

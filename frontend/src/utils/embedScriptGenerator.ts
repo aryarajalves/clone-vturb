@@ -212,6 +212,9 @@ export function generateEmbedCode({
         entries.forEach(function(entry) {
           var rect = entry.boundingClientRect;
           var pastTop = rect.bottom < 80;
+          if (!pastTop || entry.intersectionRatio > 0.35) {
+            isFloatingDismissed = false;
+          }
           if (!isCurrentlyFloating) {
             if (pastTop && entry.intersectionRatio < 0.15) {
               window.updateFloatingState(true);
