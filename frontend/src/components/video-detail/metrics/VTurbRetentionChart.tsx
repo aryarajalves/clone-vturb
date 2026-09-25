@@ -52,32 +52,32 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
     100: totalPlays > 0 ? ((metrics.retention['100%'] || 0) / totalPlays) * 100 : 0,
   }
 
-  // Interpolação para o modo de retenção
+  // Interpolação para o modo de retenção baseada em espectadores reais
+  const audienceBase = metrics.unique_plays > 0 ? metrics.unique_plays : totalPlays
+
   const getInterpolatedRetention = (pct: number) => {
     if (totalPlays === 0) return { retention: 0, audience: 0 }
     let ret = 0
-    let aud = 0
 
     if (pct <= 25) {
       const factor = pct / 25
       ret = retentionValues[0] + factor * (retentionValues[25] - retentionValues[0])
-      aud = Math.round(totalPlays - factor * (totalPlays - (metrics.retention['25%'] || 0)))
     } else if (pct <= 50) {
       const factor = (pct - 25) / 25
       ret = retentionValues[25] + factor * (retentionValues[50] - retentionValues[25])
-      aud = Math.round((metrics.retention['25%'] || 0) - factor * ((metrics.retention['25%'] || 0) - (metrics.retention['50%'] || 0)))
     } else if (pct <= 75) {
       const factor = (pct - 50) / 25
       ret = retentionValues[50] + factor * (retentionValues[75] - retentionValues[50])
-      aud = Math.round((metrics.retention['50%'] || 0) - factor * ((metrics.retention['50%'] || 0) - (metrics.retention['75%'] || 0)))
     } else {
       const factor = (pct - 75) / 25
       ret = retentionValues[75] + factor * (retentionValues[100] - retentionValues[75])
-      aud = Math.round((metrics.retention['75%'] || 0) - factor * ((metrics.retention['75%'] || 0) - (metrics.retention['100%'] || 0)))
     }
 
+    const finalRet = Math.max(0, Math.min(100, ret))
+    const aud = Math.round((finalRet / 100) * audienceBase)
+
     return {
-      retention: Math.max(0, Math.min(100, ret)),
+      retention: finalRet,
       audience: Math.max(0, aud),
     }
   }
