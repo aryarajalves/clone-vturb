@@ -217,6 +217,22 @@ def track_event(video_id: str, event: AnalyticsEventCreate, db: Session = Depend
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
 
+    # Prevenção de duplicação por disparo simultâneo ou StrictMode da mesma sessão (debounce de 1s para play)
+    if event.session_id and event.event_type == "play":
+        recent_cutoff = datetime.now(timezone.utc) - timedelta(seconds=1)
+        existing = (
+            db.query(VideoAnalytics)
+            .filter(
+                VideoAnalytics.video_id == video_id,
+                VideoAnalytics.session_id == event.session_id,
+                VideoAnalytics.event_type == "play",
+                VideoAnalytics.created_at >= recent_cutoff,
+            )
+            .first()
+        )
+        if existing:
+            return {"status": "ignored_duplicate", "event": event.event_type}
+
     record = VideoAnalytics(
         video_id=video_id,
         event_type=event.event_type,

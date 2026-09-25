@@ -56,9 +56,9 @@ describe('embedScriptGenerator and Floating Player Integration', () => {
     expect(code).toContain('IntersectionObserver')
     expect(code).toContain('updateFloatingState')
     expect(code).toContain("ifr.style.transition = 'none';")
-    // Deve resetar top para auto e aplicar bottom: 24px para evitar ficar preso no topo
+    // Deve resetar top para auto e aplicar bottom com marginEdge para evitar ficar preso no topo e afastar da barra de rolagem
     expect(code).toContain("ifr.style.top = 'auto';")
-    expect(code).toContain("ifr.style.bottom = '24px';")
+    expect(code).toContain("ifr.style.bottom = marginEdge + 'px';")
     // Deve detectar proporcao vertical 9:16
     expect(code).toContain("var videoRatio = '9:16';")
     expect(code).toContain("var isVertical = videoRatio === '9:16';")

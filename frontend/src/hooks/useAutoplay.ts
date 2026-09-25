@@ -23,6 +23,8 @@ export function useAutoplay({
   setIsSmartAutoplaying,
   setShowDirectUnmuteBanner,
 }: UseAutoplayProps) {
+  const playSentRef = useRef(false)
+
   useEffect(() => {
     if (!video) return
     const smart = video.player_settings?.smart_autoplay
@@ -41,7 +43,10 @@ export function useAutoplay({
             if (p && typeof p.then === 'function') {
               p.then(() => {
                 setIsPlaying(true)
-                sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+                if (!playSentRef.current) {
+                  playSentRef.current = true
+                  sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+                }
               }).catch(() => {
                 if (videoRef.current) {
                   videoRef.current.muted = true
@@ -82,7 +87,10 @@ export function useAutoplay({
               })
             } else {
               setIsPlaying(true)
-              sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+              if (!playSentRef.current) {
+                playSentRef.current = true
+                sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+              }
             }
           }
 

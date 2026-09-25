@@ -23,30 +23,31 @@ export const DirectUnmuteBanner: React.FC<DirectUnmuteBannerProps> = ({
       }}
       style={{
         position: 'absolute',
-        top: '16px',
+        top: '12px',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 25,
         display: 'flex',
         alignItems: 'center',
-        gap: '0.65rem',
-        padding: '0.65rem 1.25rem',
-        background: 'rgba(15, 23, 42, 0.92)',
+        gap: '0.45rem',
+        padding: '0.4rem 0.75rem',
+        background: 'rgba(15, 23, 42, 0.94)',
         backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.18)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
         borderRadius: '50px',
-        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(239, 68, 68, 0.25)',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(239, 68, 68, 0.3)',
         cursor: 'pointer',
         animation: 'pulse 2s infinite ease-in-out',
         userSelect: 'none',
-        maxWidth: '90%',
+        maxWidth: '94%',
+        width: 'max-content',
         boxSizing: 'border-box',
       }}
     >
       <div
         style={{
-          width: '28px',
-          height: '28px',
+          width: '26px',
+          height: '26px',
           borderRadius: '50%',
           background: buttonColor,
           color: '#ffffff',
@@ -57,34 +58,36 @@ export const DirectUnmuteBanner: React.FC<DirectUnmuteBannerProps> = ({
           boxShadow: `0 0 10px ${buttonColor}`,
         }}
       >
-        <VolumeX size={16} />
+        <VolumeX size={15} />
       </div>
       <span
         style={{
-          fontSize: '0.85rem',
+          fontSize: '0.78rem',
           fontWeight: 700,
           color: '#ffffff',
-          letterSpacing: '0.3px',
+          letterSpacing: '0.2px',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
+          minWidth: 0,
+          flexShrink: 1,
         }}
       >
         {text}
       </span>
       <div
         style={{
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
-          gap: '0.3rem',
-          padding: '0.35rem 0.75rem',
+          gap: '0.25rem',
+          padding: '0.3rem 0.6rem',
           borderRadius: '30px',
           background: buttonColor,
           color: '#ffffff',
-          fontSize: '0.75rem',
+          fontSize: '0.72rem',
           fontWeight: 800,
           textTransform: 'uppercase',
-          marginLeft: '0.25rem',
+          whiteSpace: 'nowrap',
           flexShrink: 0,
         }}
       >
