@@ -93,10 +93,18 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
   // Observer para Player Flutuante interno e notificação do estado para janela mãe (site externo)
   useEffect(() => {
-    try {
-      window.parent?.postMessage({ type: 'VTURB_PLAY_STATE', isPlaying, videoId }, '*')
-    } catch {}
+    try { window.parent?.postMessage({ type: 'VTURB_PLAY_STATE', isPlaying, videoId }, '*') } catch {}
   }, [isPlaying, videoId])
+
+  useEffect(() => {
+    const onCmd = (e: MessageEvent) => {
+      if (e.data?.type === 'VTURB_COMMAND' && e.data?.action === 'pause') {
+        if (videoRef.current && !videoRef.current.paused) { videoRef.current.pause(); setIsPlaying(false) }
+      }
+    }
+    window.addEventListener('message', onCmd)
+    return () => window.removeEventListener('message', onCmd)
+  }, [])
 
   useEffect(() => {
     const floating = video?.player_settings?.floating_player
@@ -332,22 +340,14 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
       {isFloatingActive && floatingConfig?.closeable !== false && (
         <button
           data-testid="floating-player-close"
-          onClick={() => setFloatingDismissed(true)}
+          onClick={() => {
+            setFloatingDismissed(true)
+            if (videoRef.current && !videoRef.current.paused) { videoRef.current.pause(); setIsPlaying(false) }
+          }}
           style={{
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            background: 'rgba(0, 0, 0, 0.75)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 20,
+            position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%',
+            background: 'rgba(0, 0, 0, 0.75)', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 20,
           }}
           title="Fechar player flutuante"
         >

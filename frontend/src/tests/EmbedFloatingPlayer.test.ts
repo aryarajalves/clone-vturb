@@ -67,6 +67,8 @@ describe('embedScriptGenerator and Floating Player Integration', () => {
     // Deve resetar isFloatingDismissed quando o usuario rolar de volta para o topo do video
     expect(code).toContain("if (!pastTop || entry.intersectionRatio > 0.35)")
     expect(code).toContain("isFloatingDismissed = false;")
+    // Deve pausar o video ao clicar no botao fechar
+    expect(code).toContain("ifr.contentWindow.postMessage({ type: 'VTURB_COMMAND', action: 'pause' }, '*');")
   })
 
   it('respeita configuração quando o player flutuante está desativado', () => {

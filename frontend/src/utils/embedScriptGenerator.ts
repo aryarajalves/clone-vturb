@@ -141,6 +141,11 @@ export function generateEmbedCode({
         ev.stopPropagation();
         isFloatingDismissed = true;
         window.updateFloatingState(false);
+        try {
+          if (ifr && ifr.contentWindow) {
+            ifr.contentWindow.postMessage({ type: 'VTURB_COMMAND', action: 'pause' }, '*');
+          }
+        } catch(err) {}
       };
       document.body.appendChild(closeBtn);
     }

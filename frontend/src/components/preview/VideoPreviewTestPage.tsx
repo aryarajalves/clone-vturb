@@ -89,24 +89,17 @@ export const VideoPreviewTestPage: React.FC<VideoPreviewTestPageProps> = ({ vide
       btn.id = `vturb-close-floating-${videoId}`
       btn.innerHTML = '&#x2715;'
       btn.title = 'Fechar miniatura flutuante'
-      btn.style.position = 'fixed'
-      btn.style.zIndex = '100000'
-      btn.style.width = '28px'
-      btn.style.height = '28px'
-      btn.style.borderRadius = '50%'
-      btn.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'
-      btn.style.border = '1px solid rgba(255, 255, 255, 0.3)'
-      btn.style.color = '#ffffff'
-      btn.style.cursor = 'pointer'
-      btn.style.display = 'none'
-      btn.style.alignItems = 'center'
-      btn.style.justifyContent = 'center'
-      btn.style.fontSize = '14px'
-      btn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.4)'
+      Object.assign(btn.style, {
+        position: 'fixed', zIndex: '100000', width: '28px', height: '28px', borderRadius: '50%',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)', border: '1px solid rgba(255, 255, 255, 0.3)',
+        color: '#ffffff', cursor: 'pointer', display: 'none', alignItems: 'center', justifyContent: 'center',
+        fontSize: '14px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)'
+      })
       btn.onclick = (ev) => {
         ev.stopPropagation()
         isFloatingDismissed = true
         updateFloatingState(false)
+        try { (ifr as any)?.contentWindow?.postMessage({ type: 'VTURB_COMMAND', action: 'pause' }, '*') } catch {}
       }
       document.body.appendChild(btn)
       closeBtn = btn
