@@ -42,11 +42,11 @@ def test_init_db_runs_without_exceptions():
 
 def test_docker_compose_production_structure():
     """Valida se o docker-compose de produção contém estritamente backend e frontend."""
-    # Procura compose na raiz ou no diretório do projeto
+    # Procura compose na pasta docker/ ou no diretório do projeto
     possible_paths = [
-        Path("/app/docker-compose.prod.yml"),
-        Path(__file__).resolve().parent.parent.parent / "docker-compose.prod.yml",
-        Path(__file__).resolve().parent.parent.parent / "docker" / "docker-compose-prod.yml"
+        Path("/app/../docker/docker-compose-prod.yml"),
+        Path("/docker/docker-compose-prod.yml"),
+        Path(__file__).resolve().parent.parent.parent / "docker" / "docker-compose-prod.yml",
     ]
     compose_path = None
     for p in possible_paths:

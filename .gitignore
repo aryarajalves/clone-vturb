@@ -5,6 +5,7 @@
 .env.*.local
 !.env.example
 !.env.production.example
+!docker/.env.production.example
 
 # Dependencies
 node_modules/

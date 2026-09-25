@@ -1,7 +1,7 @@
 # Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.7`
 
 [![Versão](https://img.shields.io/badge/versão-1.0.7-blue.svg)](README.md)
-[![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.prod.yml)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker/docker-compose-prod.yml)
 [![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
 Plataforma completa de alta performance para hospedagem, gerenciamento e reprodução de vídeos de vendas (VSLs) de alta conversão. O sistema conta com **Frontend** em React (Vite + TypeScript), **Backend** em Python (FastAPI + SQLAlchemy), banco de dados **PostgreSQL** orquestrado via **Docker**, suporte a armazenamento local e em nuvem via **Backblaze B2 Object Storage**, e auditoria automatizada de segurança de dependências.
@@ -173,15 +173,15 @@ Acesse a aplicação no navegador em: `http://localhost:5175`
 A stack de produção foi concebida exclusivamente com os serviços do **Backend** (Uvicorn multi-worker sem reload) e **Frontend** (Build estática de alta performance servida via Nginx Alpine com Gzip e SPA Fallback):
 ```bash
 # 1. Copie o modelo de variáveis de ambiente de produção
-cp .env.production.example .env.production
+cp docker/.env.production.example docker/.env.production
 
-# 2. Ajuste a URL do banco PostgreSQL de produção e suas credenciais no .env.production
+# 2. Ajuste a URL do banco PostgreSQL de produção e suas credenciais no docker/.env.production
 
 # 3. Suba os contêineres de produção
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+docker compose --env-file docker/.env.production -f docker/docker-compose-prod.yml up -d --build
 
 # 4. Validar os serviços
-docker compose --env-file .env.production -f docker-compose.prod.yml ps
+docker compose --env-file docker/.env.production -f docker/docker-compose-prod.yml ps
 ```
 
 
