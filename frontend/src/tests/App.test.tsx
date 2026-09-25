@@ -90,7 +90,7 @@ describe('App Dashboard VTurb Layout', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('topbar')).toBeInTheDocument()
-      expect(screen.getByTestId('vturb-logo-text')).toHaveTextContent('Clone do VTurb')
+      expect(screen.getByTestId('vturb-logo-text')).toHaveTextContent('Smart VSL')
       expect(screen.getByTestId('btn-novo-video')).toHaveTextContent('Novo Vídeo')
       expect(screen.getByTestId('user-email-display')).toHaveTextContent('admin@vturb.com')
       expect(screen.getByTestId('user-superadmin-badge')).toHaveTextContent(/admin/i)

@@ -67,7 +67,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               letterSpacing: '-0.5px',
             }}
           >
-            Clone do VTurb
+            Smart VSL
           </span>
         </div>
 

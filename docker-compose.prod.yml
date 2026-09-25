@@ -25,7 +25,7 @@ services:
       - BACKBLAZE_CDN_URL=${BACKBLAZE_CDN_URL:-}
       - BREVO_API_KEY=${BREVO_API_KEY:-}
       - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL:-noreply@vturb.com}
-      - BREVO_SENDER_NAME=${BREVO_SENDER_NAME:-Clone do VTurb}
+      - BREVO_SENDER_NAME=${BREVO_SENDER_NAME:-Smart VSL}
       - VITE_API_BASE_URL=${VITE_API_BASE_URL:-https://${BACKEND_DOMAIN:-api.seudominio.com}}
     volumes:
       - backend_uploads:/app/static/uploads
@@ -82,7 +82,7 @@ services:
       - BACKBLAZE_CDN_URL=${BACKBLAZE_CDN_URL:-}
       - BREVO_API_KEY=${BREVO_API_KEY:-}
       - BREVO_SENDER_EMAIL=${BREVO_SENDER_EMAIL:-noreply@vturb.com}
-      - BREVO_SENDER_NAME=${BREVO_SENDER_NAME:-Clone do VTurb}
+      - BREVO_SENDER_NAME=${BREVO_SENDER_NAME:-Smart VSL}
       - VITE_API_BASE_URL=${VITE_API_BASE_URL:-https://${BACKEND_DOMAIN:-api.seudominio.com}}
     deploy:
       mode: replicated

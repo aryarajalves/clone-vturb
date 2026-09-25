@@ -262,7 +262,7 @@ export const AcceptInviteView: React.FC<AcceptInviteViewProps> = ({
           <div style={styles.logoBadge}>
             <Play size={16} color="#ffffff" fill="#ffffff" style={{ marginLeft: '2px' }} />
           </div>
-          <span style={styles.logoText}>Clone do VTurb</span>
+          <span style={styles.logoText}>Smart VSL</span>
         </div>
 
         {/* Header com Papel e Título */}

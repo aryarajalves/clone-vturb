@@ -86,7 +86,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <Play size={20} color="#ffffff" fill="#ffffff" style={{ marginLeft: '2px' }} />
           </div>
           <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
-            Clone do VTurb
+            Smart VSL
           </span>
         </div>
 

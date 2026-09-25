@@ -34,7 +34,7 @@ def send_verification_code_email(to_email: str, code: str, to_name: Optional[str
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Código de Verificação - Clone do VTurb</title>
+      <title>Código de Verificação - Smart VSL</title>
       <style>
         body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }}
         .card {{ max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }}
@@ -50,7 +50,7 @@ def send_verification_code_email(to_email: str, code: str, to_name: Optional[str
     <body>
       <div class="card">
         <div class="header">
-          <div class="logo">▶ Clone do VTurb</div>
+          <div class="logo">▶ Smart VSL</div>
           <h2 class="title">Ativação da Sua Conta</h2>
         </div>
         <p class="text">Olá, <strong>{recipient_name}</strong>!</p>
@@ -63,7 +63,7 @@ def send_verification_code_email(to_email: str, code: str, to_name: Optional[str
         <p class="text">Este código expira em <strong>15 minutos</strong>. Se você não solicitou este cadastro, ignore este e-mail.</p>
 
         <div class="footer">
-          &copy; Clone do VTurb - Player de Alta Conversão. Todos os direitos reservados.
+          &copy; Smart VSL - Player de Alta Conversão. Todos os direitos reservados.
         </div>
       </div>
     </body>
@@ -81,7 +81,7 @@ def send_verification_code_email(to_email: str, code: str, to_name: Optional[str
                 "name": recipient_name,
             }
         ],
-        "subject": f"Seu código de ativação VTurb: {code}",
+        "subject": f"Seu código de ativação Smart VSL: {code}",
         "htmlContent": html_content,
     }
 
@@ -130,7 +130,7 @@ def send_password_reset_email(to_email: str, reset_url: str, to_name: Optional[s
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Redefinição de Senha - Clone do VTurb</title>
+      <title>Redefinição de Senha - Smart VSL</title>
       <style>
         body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }}
         .card {{ max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }}
@@ -146,7 +146,7 @@ def send_password_reset_email(to_email: str, reset_url: str, to_name: Optional[s
     <body>
       <div class="card">
         <div class="header">
-          <div class="logo">▶ Clone do VTurb</div>
+          <div class="logo">▶ Smart VSL</div>
           <h2 class="title">Redefinição de Senha</h2>
         </div>
         <p class="text">Olá, <strong>{recipient_name}</strong>!</p>
@@ -160,7 +160,7 @@ def send_password_reset_email(to_email: str, reset_url: str, to_name: Optional[s
         <p class="text">Este link é válido por <strong>24 horas</strong>. Se você não esperava essa alteração, contate o administrador do sistema.</p>
 
         <div class="footer">
-          &copy; Clone do VTurb - Player de Alta Conversão. Todos os direitos reservados.
+          &copy; Smart VSL - Player de Alta Conversão. Todos os direitos reservados.
         </div>
       </div>
     </body>
@@ -178,7 +178,7 @@ def send_password_reset_email(to_email: str, reset_url: str, to_name: Optional[s
                 "name": recipient_name,
             }
         ],
-        "subject": "Redefinição de Senha - Clone do VTurb",
+        "subject": "Redefinição de Senha - Smart VSL",
         "htmlContent": html_content,
     }
 
