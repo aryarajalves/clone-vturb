@@ -154,9 +154,10 @@ export function generateEmbedCode({
 
       if (shouldFloat) {
         var isVertical = videoRatio === '9:16';
-        var actualWidth = isVertical ? Math.min(floatingWidth, 230) : floatingWidth;
+        var actualWidth = isVertical ? Math.min(floatingWidth, 250) : floatingWidth;
         var floatHeight = isVertical ? Math.round((actualWidth * 16) / 9) : Math.round((actualWidth * 9) / 16);
         var marginEdge = 32;
+        var marginEdgeRight = 56;
         ifr.style.position = 'fixed';
         ifr.style.top = 'auto';
         ifr.style.bottom = marginEdge + 'px';
@@ -164,7 +165,7 @@ export function generateEmbedCode({
           ifr.style.left = marginEdge + 'px';
           ifr.style.right = 'auto';
         } else {
-          ifr.style.right = marginEdge + 'px';
+          ifr.style.right = marginEdgeRight + 'px';
           ifr.style.left = 'auto';
         }
         ifr.style.width = actualWidth + 'px';
@@ -183,7 +184,7 @@ export function generateEmbedCode({
             closeBtn.style.left = (marginEdge + actualWidth - 14) + 'px';
             closeBtn.style.right = 'auto';
           } else {
-            closeBtn.style.right = (marginEdge - 12) + 'px';
+            closeBtn.style.right = (marginEdgeRight - 12) + 'px';
             closeBtn.style.left = 'auto';
           }
         }

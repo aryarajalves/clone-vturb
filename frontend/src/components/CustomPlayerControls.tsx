@@ -73,10 +73,10 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
         left: 0,
         right: 0,
         background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 65%, transparent 100%)',
-        padding: '0.75rem 1rem',
+        padding: '0.5rem 0.65rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.45rem',
+        gap: '0.4rem',
         zIndex: 15,
         transition: 'opacity 0.2s ease',
       }}
@@ -157,17 +157,17 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
       )}
 
       {/* Linha de Controles Inferiores */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#ffffff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#ffffff', gap: '0.35rem', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 1, minWidth: 0, overflow: 'hidden' }}>
           {/* Botão Play / Pause */}
           <button
             type="button"
             data-testid="embed-control-play"
             onClick={onTogglePlay}
-            style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+            style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
             title={isPlaying ? 'Pausar' : 'Reproduzir'}
           >
-            {isPlaying ? <Pause size={18} /> : <Play size={18} fill="#ffffff" />}
+            {isPlaying ? <Pause size={17} /> : <Play size={17} fill="#ffffff" />}
           </button>
 
           {/* Voltar 10s */}
@@ -182,14 +182,16 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                 border: 'none',
                 color: '#ffffff',
                 cursor: 'pointer',
-                fontSize: '0.75rem',
+                fontSize: '0.72rem',
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '2px',
+                gap: '1px',
+                padding: '2px',
+                flexShrink: 0,
               }}
             >
-              <RotateCcw size={15} />
+              <RotateCcw size={14} />
               <span>10s</span>
             </button>
           )}
@@ -206,28 +208,32 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                 border: 'none',
                 color: '#ffffff',
                 cursor: 'pointer',
-                fontSize: '0.75rem',
+                fontSize: '0.72rem',
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '2px',
+                gap: '1px',
+                padding: '2px',
+                flexShrink: 0,
               }}
             >
               <span>10s</span>
-              <RotateCw size={15} />
+              <RotateCw size={14} />
             </button>
           )}
 
-          {/* Controle Interativo de Volume com Slider */}
+          {/* Controle Interativo de Volume com Slider Popup */}
           {volume && (
-            <VolumeControl
-              volume={volumeLevel}
-              isMuted={isMuted}
-              primaryColor={primaryColor}
-              onVolumeChange={onVolumeChange}
-              onToggleMute={onToggleMute}
-              testIdPrefix="embed"
-            />
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+              <VolumeControl
+                volume={volumeLevel}
+                isMuted={isMuted}
+                primaryColor={primaryColor}
+                onVolumeChange={onVolumeChange}
+                onToggleMute={onToggleMute}
+                testIdPrefix="embed"
+              />
+            </div>
           )}
 
           {/* Tempo Restante do Vídeo */}
@@ -236,11 +242,13 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
               data-testid="embed-video-time"
               title="Tempo restante do vídeo"
               style={{
-                fontSize: '0.78rem',
+                fontSize: '0.74rem',
                 color: '#cbd5e1',
-                marginLeft: '0.35rem',
+                marginLeft: '0.2rem',
                 fontFamily: 'monospace',
                 fontWeight: 600,
+                whiteSpace: 'nowrap',
+                flexShrink: 1,
               }}
             >
               -{formatTime(Math.max(0, (duration || 0) - currentTime))}
@@ -248,8 +256,8 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
           )}
         </div>
 
-        {/* Lado Direito: Velocidade e Fullscreen */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        {/* Lado Direito: Velocidade e Fullscreen (Nunca encolhem) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
           {speedControl && (
             <button
               type="button"
@@ -260,11 +268,12 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
                 background: 'rgba(255,255,255,0.15)',
                 border: '1px solid rgba(255,255,255,0.25)',
                 color: '#ffffff',
-                borderRadius: '5px',
-                padding: '2px 7px',
-                fontSize: '0.78rem',
+                borderRadius: '4px',
+                padding: '1px 5px',
+                fontSize: '0.74rem',
                 fontWeight: 700,
                 cursor: 'pointer',
+                flexShrink: 0,
               }}
             >
               {currentSpeed.toFixed(2)}x
@@ -277,9 +286,9 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
               data-testid="embed-control-fullscreen"
               onClick={onToggleFullscreen}
               title="Tela Cheia"
-              style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+              style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
             >
-              <Maximize size={18} />
+              <Maximize size={17} />
             </button>
           )}
         </div>

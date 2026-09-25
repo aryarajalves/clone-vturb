@@ -62,17 +62,32 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
         {renderIcon()}
       </button>
 
-      {/* Slider deslizante que surge suavemente ao passar o mouse ou interagir */}
+      {/* Slider Vertical em popup acima do ícone para não expandir para a direita */}
       <div
         data-testid={`${testIdPrefix}-volume-slider-wrapper`}
         style={{
-          width: isHovered ? '68px' : '0px',
-          opacity: isHovered ? 1 : 0,
-          overflow: 'hidden',
-          transition: 'width 0.2s ease, opacity 0.2s ease',
+          position: 'absolute',
+          bottom: '100%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          borderRadius: '8px',
+          padding: '8px 4px',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          marginLeft: isHovered ? '4px' : '0px',
+          justifyContent: 'center',
+          opacity: isHovered ? 1 : 0,
+          pointerEvents: isHovered ? 'auto' : 'none',
+          visibility: isHovered ? 'visible' : 'hidden',
+          transition: 'opacity 0.2s ease, visibility 0.2s ease',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+          zIndex: 50,
+          width: '28px',
+          height: '84px',
+          marginBottom: '4px',
         }}
       >
         <input
@@ -88,8 +103,11 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
             onVolumeChange(val)
           }}
           style={{
-            width: '64px',
-            height: '4px',
+            WebkitAppearance: 'slider-vertical' as any,
+            writingMode: 'vertical-lr',
+            direction: 'rtl',
+            width: '6px',
+            height: '70px',
             accentColor: primaryColor,
             cursor: 'pointer',
           }}

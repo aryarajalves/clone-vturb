@@ -221,4 +221,36 @@ describe('EmbedPlayer Custom Controls and Visual Options', () => {
 
     postMessageSpy.mockRestore()
   })
+
+  it('garante que os botões de Fullscreen e Velocidade possuam flex-shrink 0 e o volume seja popup vertical', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/videos/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(baseMockVideo),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: 'ok' }),
+      })
+    })
+
+    render(<EmbedPlayer videoId={baseMockVideo.id} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('embed-control-fullscreen')).toBeInTheDocument()
+    })
+
+    const fsBtn = screen.getByTestId('embed-control-fullscreen')
+    const speedBtn = screen.getByTestId('embed-control-speed')
+    const volumeSliderWrapper = screen.getByTestId('embed-volume-slider-wrapper')
+
+    // Botões essenciais não devem encolher
+    expect(fsBtn).toHaveStyle({ flexShrink: 0 })
+    expect(speedBtn).toHaveStyle({ flexShrink: 0 })
+
+    // Popup de volume deve ser posicionado de forma absoluta acima do ícone
+    expect(volumeSliderWrapper).toHaveStyle({ position: 'absolute' })
+  })
 })

@@ -302,9 +302,9 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
       onMouseLeave={() => { if (isPlaying) setAreControlsVisible(false) }}
       style={{
         position: isFloatingActive ? 'fixed' : 'relative',
-        bottom: isFloatingActive ? '24px' : undefined,
-        right: isFloatingActive ? (floatingConfig?.position === 'bottom-left' ? undefined : '24px') : undefined,
-        left: isFloatingActive ? (floatingConfig?.position === 'bottom-left' ? '24px' : undefined) : undefined,
+        bottom: isFloatingActive ? '32px' : undefined,
+        right: isFloatingActive ? (floatingConfig?.position === 'bottom-left' ? undefined : '56px') : undefined,
+        left: isFloatingActive ? (floatingConfig?.position === 'bottom-left' ? '32px' : undefined) : undefined,
         width: isFullscreen ? '100vw' : isFloatingActive ? `${floatingConfig?.width || 320}px` : '100%',
         maxWidth: isFullscreen ? 'none' : isFloatingActive ? undefined : !isInsideIframe ? (configuredWidth ? (configuredWidth.endsWith('px') || configuredWidth.endsWith('%') ? configuredWidth : `${configuredWidth}px`) : (effectiveRatio === '9:16' ? '450px' : '100%')) : '100%',
         aspectRatio: isFullscreen ? undefined : isFloatingActive ? '16/9' : (isInsideIframe ? undefined : (effectiveRatio === '9:16' ? '9/16' : effectiveRatio === '4:3' ? '4/3' : undefined)),
