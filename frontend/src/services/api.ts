@@ -81,7 +81,8 @@ export async function fetchVideos(): Promise<Video[]> {
 }
 
 export async function fetchVideo(id: string): Promise<Video> {
-  const res = await fetch(`${API_BASE}/videos/${id}`)
+  const base = getApiBaseUrl()
+  const res = await fetch(`${base}/videos/${id}`)
   if (!res.ok) throw new Error('Falha ao carregar dados do vídeo.')
   return res.json()
 }

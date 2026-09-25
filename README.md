@@ -1,4 +1,8 @@
-# Clone do VTurb - Player de Alta Conversão e Hospedagem de Vídeos
+# Clone do VTurb - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.5`
+
+[![Versão](https://img.shields.io/badge/versão-1.0.5-blue.svg)](README.md)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.prod.yml)
+[![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
 Plataforma completa inspirada no VTurb para hospedagem, gerenciamento e reprodução de vídeos de vendas (VSLs) de alta conversão. O sistema conta com **Frontend** em React (Vite + TypeScript), **Backend** em Python (FastAPI + SQLAlchemy), banco de dados **PostgreSQL** orquestrado via **Docker**, suporte a armazenamento local e em nuvem via **Backblaze B2 Object Storage**, e auditoria automatizada de segurança de dependências.
 
@@ -209,3 +213,18 @@ cd backend && pytest -v
 cd frontend
 npm test
 ```
+
+---
+
+## 📦 Imagens Docker Oficiais (Docker Hub)
+
+| Imagem | Versão Atual | Descrição |
+|---|---|---|
+| `aryalvesfernandes/clone-vturb:frontend-1.0.5` | `1.0.5` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
+| `aryalvesfernandes/clone-vturb:backend-1.0.5` | `1.0.5` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+
+### 🚀 Novidades da Versão 1.0.5
+- **Eliminação de tela branca no Embed**: Script inline em `index.html` e tema dark garantido antes da renderização do bundle;
+- **Compatibilidade Iframe & CSP**: Configuração Nginx com `Content-Security-Policy: frame-ancestors *;` para permitir incorporação em qualquer domínio;
+- **Player Flutuante (Picture-in-Picture)**: Suporte completo tanto em páginas com o player incorporado diretamente quanto em iframes com script wrapper e `IntersectionObserver`;
+- **Controles Customizados Dinâmicos**: Barra de progresso, botão de play, volume com slider e tempo do vídeo com respeito rigoroso às configurações de exibição/ocultação do painel.

@@ -34,6 +34,10 @@ function App() {
 
   // O embed player é público e não requer autenticação
   if (embedId) {
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.add('embed-mode')
+      document.body.classList.add('embed-mode')
+    }
     return <EmbedPlayer videoId={embedId} />
   }
 

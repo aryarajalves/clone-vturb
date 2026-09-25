@@ -7,6 +7,14 @@
     <title>Clone do VTurb</title>
     <!-- Script de Configuração Dinâmica em Tempo de Execução (Runtime Config) -->
     <script src="/env-config.js"></script>
+    <script>
+      (function() {
+        var isEmbed = window.location.search.indexOf('embed=') !== -1 || window.location.pathname.indexOf('/embed/') !== -1;
+        if (isEmbed) {
+          document.documentElement.classList.add('embed-mode');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

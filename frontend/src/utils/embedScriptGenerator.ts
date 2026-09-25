@@ -1,0 +1,221 @@
+import type { Video } from '../types/video'
+
+interface EmbedCodeOptions {
+  video: Video
+  embedUrl: string
+  embedType: 'iframe' | 'script'
+  resolvedWidth: string
+  resolvedHeight: string | null
+  heightPreset: string
+  paddingTopMap: Record<string, string>
+}
+
+export function generateEmbedCode({
+  video,
+  embedUrl,
+  embedType,
+  resolvedWidth,
+  resolvedHeight,
+  heightPreset,
+  paddingTopMap,
+}: EmbedCodeOptions): string {
+  const isFloatingEnabled = Boolean(video.player_settings?.floating_player?.enabled)
+  const floatingPos = video.player_settings?.floating_player?.position || 'bottom-right'
+  const floatingWidth = Number(video.player_settings?.floating_player?.width) || 320
+  const isCloseable = video.player_settings?.floating_player?.closeable !== false
+
+  const listenerScript = `
+<script>
+(function() {
+  var videoId = '${video.id}';
+  var isFloatingConfig = ${isFloatingEnabled ? 'true' : 'false'};
+  var floatingPos = '${floatingPos}';
+  var floatingWidth = ${floatingWidth};
+  var isCloseable = ${isCloseable ? 'true' : 'false'};
+
+  var isFloatingDismissed = false;
+  var isVideoPlaying = false;
+  var isIntersecting = true;
+
+  window.addEventListener('message', function(e) {
+    if (!e.data) return;
+    if (e.data.type === 'VTURB_PLAY_STATE') {
+      isVideoPlaying = Boolean(e.data.isPlaying);
+      updateFloatingState();
+    }
+    if (e.data.type === 'VTURB_PITCH_REACHED') {
+      var sel = e.data.targetSelector || '.delay-pitch';
+      document.querySelectorAll(sel).forEach(function(el) { el.style.display = 'block'; });
+      if (e.data.autoScroll) {
+        var first = document.querySelector(sel);
+        if (first) {
+          var top = first.getBoundingClientRect().top + window.pageYOffset - (e.data.scrollOffset || 50);
+          window.scrollTo({ top: top, behavior: 'smooth' });
+        }
+      }
+      if (e.data.persistence && e.data.videoId) {
+        try { localStorage.setItem('vturb_pitch_' + e.data.videoId, '1'); } catch(err) {}
+      }
+    }
+    if (e.data.type === 'VTURB_PIXEL_TRACK') {
+      var evt = e.data.eventName;
+      if (typeof window.fbq === 'function') window.fbq('trackCustom', evt, { video_id: e.data.videoId });
+      if (typeof window.gtag === 'function') window.gtag('event', evt, { video_id: e.data.videoId });
+      if (typeof window.ttq === 'function' && typeof window.ttq.track === 'function') window.ttq.track(evt, { video_id: e.data.videoId });
+    }
+  });
+
+  // Listener para desbloquear áudio de imediato na menor interação
+  var unlocked = false;
+  function notifyIframe() {
+    if (unlocked) return;
+    unlocked = true;
+    var ifr = document.querySelector('iframe[src*="' + videoId + '"]');
+    if (ifr && ifr.contentWindow) {
+      try { ifr.contentWindow.postMessage({ type: 'VTURB_PARENT_INTERACTION' }, '*'); } catch(e) {}
+    }
+  }
+  ['click', 'touchstart', 'scroll', 'keydown'].forEach(function(evt) {
+    window.addEventListener(evt, notifyIframe, { once: true, passive: true });
+  });
+
+  try {
+    if (localStorage.getItem('vturb_pitch_' + videoId) === '1') {
+      var sel = '${video.player_settings?.pitch_delay?.target_css_selector || '.delay-pitch'}';
+      document.querySelectorAll(sel).forEach(function(el) { el.style.display = 'block'; });
+    }
+  } catch(err) {}
+
+  // Lógica do Player Flutuante (Picture-in-Picture no site externo)
+  function setupFloatingObserver() {
+    if (!isFloatingConfig) return;
+    var wrapper = document.getElementById('vturb-wrapper-' + videoId);
+    var ifr = document.querySelector('iframe[src*="' + videoId + '"]');
+    if (!wrapper || !ifr) return;
+
+    // Cria botão de fechar flutuante se não existir
+    var closeBtn = document.getElementById('vturb-close-floating-' + videoId);
+    if (!closeBtn && isCloseable) {
+      closeBtn = document.createElement('button');
+      closeBtn.id = 'vturb-close-floating-' + videoId;
+      closeBtn.innerHTML = '&#x2715;';
+      closeBtn.title = 'Fechar mini player';
+      closeBtn.style.position = 'fixed';
+      closeBtn.style.zIndex = '100000';
+      closeBtn.style.width = '28px';
+      closeBtn.style.height = '28px';
+      closeBtn.style.borderRadius = '50%';
+      closeBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      closeBtn.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+      closeBtn.style.color = '#ffffff';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.style.display = 'none';
+      closeBtn.style.alignItems = 'center';
+      closeBtn.style.justifyContent = 'center';
+      closeBtn.style.fontSize = '14px';
+      closeBtn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.4)';
+      closeBtn.onclick = function(ev) {
+        ev.stopPropagation();
+        isFloatingDismissed = true;
+        updateFloatingState();
+      };
+      document.body.appendChild(closeBtn);
+    }
+
+    window.updateFloatingState = function() {
+      if (!wrapper || !ifr) return;
+      var shouldFloat = isFloatingConfig && !isFloatingDismissed && !isIntersecting && isVideoPlaying;
+        var isVertical = '${video.player_settings?.aspect_ratio || '16:9'}' === '9:16';
+        var floatHeight = isVertical ? Math.round(floatingWidth * 16 / 9) : Math.round(floatingWidth * 9 / 16);
+        ifr.style.position = 'fixed';
+        ifr.style.bottom = '24px';
+        if (floatingPos === 'bottom-left') {
+          ifr.style.left = '24px';
+          ifr.style.right = 'auto';
+        } else {
+          ifr.style.right = '24px';
+          ifr.style.left = 'auto';
+        }
+        ifr.style.width = floatingWidth + 'px';
+        ifr.style.height = floatHeight + 'px';
+        ifr.style.zIndex = '99999';
+        ifr.style.borderRadius = '12px';
+        ifr.style.boxShadow = '0 12px 35px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.15)';
+        ifr.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+
+        if (closeBtn) {
+          closeBtn.style.display = 'flex';
+          closeBtn.style.bottom = (24 + floatHeight - 14) + 'px';
+          if (floatingPos === 'bottom-left') {
+            closeBtn.style.left = (24 + floatingWidth - 14) + 'px';
+            closeBtn.style.right = 'auto';
+          } else {
+            closeBtn.style.right = '16px';
+            closeBtn.style.left = 'auto';
+          }
+        }
+      } else {
+        ifr.style.position = 'absolute';
+        ifr.style.top = '0';
+        ifr.style.left = '0';
+        ifr.style.right = 'auto';
+        ifr.style.bottom = 'auto';
+        ifr.style.width = '100%';
+        ifr.style.height = '100%';
+        ifr.style.zIndex = '1';
+        ifr.style.borderRadius = '${video.player_settings?.border_radius ?? 0}px';
+        ifr.style.boxShadow = 'none';
+
+        if (closeBtn) {
+          closeBtn.style.display = 'none';
+        }
+      }
+    };
+
+    if ('IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          isIntersecting = entry.isIntersecting;
+          updateFloatingState();
+        });
+      }, { threshold: 0.1 });
+      observer.observe(wrapper);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFloatingObserver);
+  } else {
+    setupFloatingObserver();
+  }
+})();
+</script>`
+
+  let iframeInner = ''
+  let scriptInner = ''
+
+  if (heightPreset === 'custom' && resolvedHeight) {
+    iframeInner = `<div id="vturb-wrapper-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
+  <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
+</div>`
+    scriptInner = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
+  <div id="vturb-wrapper-${video.id}" style="width:100%;height:100%;position:relative;">
+    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
+  </div>
+</div>`
+  } else {
+    const pTop = paddingTopMap[heightPreset] || '56.25%'
+    iframeInner = `<div id="vturb-wrapper-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
+  <div style="position:relative;width:100%;padding-top:${pTop};">
+    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
+  </div>
+</div>`
+    scriptInner = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
+  <div id="vturb-wrapper-${video.id}" style="position:relative;width:100%;padding-top:${pTop};">
+    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
+  </div>
+</div>`
+  }
+
+  return (embedType === 'iframe' ? iframeInner : scriptInner) + listenerScript
+}

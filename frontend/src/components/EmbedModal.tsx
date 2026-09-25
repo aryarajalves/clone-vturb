@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { X, Copy, Check, Code, ExternalLink, Sliders } from 'lucide-react'
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll'
 import type { Video } from '../types/video'
+import { generateEmbedCode } from '../utils/embedScriptGenerator'
 
 interface EmbedModalProps {
   video: Video | null
@@ -47,51 +48,15 @@ export const EmbedModal: React.FC<EmbedModalProps> = ({ video, isOpen, onClose }
     '4:3': '75%',
   }
 
-  // Listener embutido para sincronizar desbloqueio de áudio e pitch delay
-  const audioUnlockScript = `
-<script>
-(function() {
-  var unlocked = false;
-  function notifyIframe() {
-    if (unlocked) return;
-    unlocked = true;
-    var ifr = document.querySelector('iframe[src*="${video.id}"]');
-    if (ifr && ifr.contentWindow) {
-      try { ifr.contentWindow.postMessage({ type: 'VTURB_PARENT_INTERACTION' }, '*'); } catch(e) {}
-    }
-  }
-  ['click', 'touchstart', 'scroll', 'keydown'].forEach(function(evt) {
-    window.addEventListener(evt, notifyIframe, { once: true, passive: true });
-  });
-})();
-</script>`
-
-  // Geração do código HTML
-  let iframeCode = ''
-  let scriptCode = ''
-
-  if (heightPreset === 'custom' && resolvedHeight) {
-    iframeCode = `<div style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
-  <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
-</div>${audioUnlockScript}`
-    scriptCode = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
-  <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
-</div>${audioUnlockScript}`
-  } else {
-    const pTop = paddingTopMap[heightPreset] || '56.25%'
-    iframeCode = `<div style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
-  <div style="position:relative;width:100%;padding-top:${pTop};">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
-  </div>
-</div>${audioUnlockScript}`
-    scriptCode = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
-  <div style="position:relative;width:100%;padding-top:${pTop};">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
-  </div>
-</div>${audioUnlockScript}`
-  }
-
-  const currentCode = embedType === 'iframe' ? iframeCode : scriptCode
+  const currentCode = generateEmbedCode({
+    video,
+    embedUrl,
+    embedType,
+    resolvedWidth,
+    resolvedHeight,
+    heightPreset,
+    paddingTopMap,
+  })
 
   const handleCopy = async () => {
     try {

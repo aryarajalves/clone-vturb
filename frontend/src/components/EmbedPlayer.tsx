@@ -5,7 +5,13 @@ import { fetchVideo, sendTelemetryEvent, getMediaUrl } from '../services/api'
 import { SmartAutoplayOverlay } from './SmartAutoplayOverlay'
 import { BigPlayOverlay } from './BigPlayOverlay'
 import { DirectUnmuteBanner } from './DirectUnmuteBanner'
+import { CustomPlayerControls } from './CustomPlayerControls'
+import { CtaButtonOverlay } from './CtaButtonOverlay'
 import { triggerTrackingPixels } from '../utils/embedTracking'
+import { useAutoplay } from '../hooks/useAutoplay'
+import { useDomainProtection } from '../hooks/useDomainProtection'
+import { useVideoTelemetry } from '../hooks/useVideoTelemetry'
+import { EmbedLoadingState, EmbedErrorState, EmbedBlockedState } from './EmbedPlayerStates'
 
 interface EmbedPlayerProps {
   videoId: string
@@ -17,12 +23,18 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
   const [error, setError] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [volumeLevel, setVolumeLevel] = useState(1.0)
   const [showCta, setShowCta] = useState(false)
-  const [domainBlocked, setDomainBlocked] = useState(false)
+  const domainBlocked = useDomainProtection(video)
   const [isSmartAutoplaying, setIsSmartAutoplaying] = useState(false)
   const [showDirectUnmuteBanner, setShowDirectUnmuteBanner] = useState(false)
   const [isFloating, setIsFloating] = useState(false)
   const [floatingDismissed, setFloatingDismissed] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [currentSpeed, setCurrentSpeed] = useState(1.0)
+  const [areControlsVisible, setAreControlsVisible] = useState(true)
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [visitorId] = useState(() => {
     try {
@@ -39,10 +51,13 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const progressSent = useRef<{ [key: string]: boolean }>({})
-  const pixelEventsSent = useRef<{ [key: string]: boolean }>({})
-  const pitchDelaySent = useRef(false)
-  const impressionSent = useRef(false)
+
+  const { trackImpression, handleTimeUpdateProgress, handleEndedTelemetry } = useVideoTelemetry({
+    video,
+    videoId,
+    visitorId,
+    setShowCta,
+  })
 
   useEffect(() => {
     async function init() {
@@ -50,16 +65,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
         setLoading(true)
         const data = await fetchVideo(videoId)
         setVideo(data)
-
-        // Previne envio duplicado de impressão em React StrictMode / duplo mount
-        if (!impressionSent.current) {
-          impressionSent.current = true
-          sendTelemetryEvent(videoId, {
-            event_type: 'impression',
-            session_id: visitorId,
-            referer: document.referrer || window.location.href,
-          })
-        }
+        trackImpression()
       } catch (err: any) {
         setError('Vídeo indisponível ou excluído.')
       } finally {
@@ -68,39 +74,6 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     }
     init()
   }, [videoId, visitorId])
-
-  // Verificação de Whitelist e Proteção de Domínio
-  useEffect(() => {
-    if (!video) return
-    const protection = video.player_settings?.domain_protection
-    if (protection?.enabled && protection.allowed_domains && protection.allowed_domains.length > 0) {
-      let host = ''
-      try {
-        if (document.referrer) {
-          host = new URL(document.referrer).hostname.toLowerCase()
-        } else {
-          host = window.location.hostname.toLowerCase()
-        }
-      } catch {
-        host = window.location.hostname.toLowerCase()
-      }
-
-      const isAllowed = protection.allowed_domains.some((d) => {
-        const clean = d.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0]
-        if (!clean) return false
-        return (
-          clean === '*' ||
-          host === clean ||
-          host.endsWith('.' + clean) ||
-          (clean === 'localhost' && (host === 'localhost' || host === '127.0.0.1'))
-        )
-      })
-
-      setDomainBlocked(!isAllowed)
-    } else {
-      setDomainBlocked(false)
-    }
-  }, [video])
 
   // Aplica velocidade Turbo configurada no vídeo se turbo_enabled for true
   useEffect(() => {
@@ -111,98 +84,25 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     }
   }, [video])
 
-  // Inicializa Autoplay (Smart Autoplay com chamada ou Autoplay Direto com som)
+  // Inicializa Autoplay (Smart Autoplay com chamada ou Autoplay Direto com som) via Hook customizado
+  useAutoplay({
+    video,
+    videoId,
+    visitorId,
+    videoRef,
+    setIsPlaying,
+    setIsMuted,
+    setIsSmartAutoplaying,
+    setShowDirectUnmuteBanner,
+  })
+
+  // Observer para Player Flutuante interno e notificação do estado para janela mãe (site externo)
   useEffect(() => {
-    if (!video) return
-    const smart = video.player_settings?.smart_autoplay
-    if (smart?.enabled) {
-      const isDirect = smart.mode === 'direct'
-      if (isDirect) {
-        // Modo Autoplay Direto com Som (sem botões ou overlays visuais na frente)
-        setIsSmartAutoplaying(false)
-        setIsMuted(false)
-        if (videoRef.current) {
-          videoRef.current.muted = false
-          videoRef.current.volume = 1.0
+    try {
+      window.parent?.postMessage({ type: 'VTURB_PLAY_STATE', isPlaying, videoId }, '*')
+    } catch {}
+  }, [isPlaying, videoId])
 
-          const attemptPlay = () => {
-            if (!videoRef.current) return
-            const p = videoRef.current.play()
-            if (p && typeof p.then === 'function') {
-              p.then(() => {
-                setIsPlaying(true)
-                sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
-              }).catch(() => {
-                // Se o navegador bloquear áudio sem interação prévia (política MEI),
-                // inicia tocando mudo e exibe o banner informativo com botão para desmutar
-                if (videoRef.current) {
-                  videoRef.current.muted = true
-                  setIsMuted(true)
-                  setShowDirectUnmuteBanner(true)
-                  videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
-
-                  // Desmutar imediatamente ao toque, clique ou interação direta
-                  const unlockAudio = () => {
-                    if (videoRef.current) {
-                      videoRef.current.muted = false
-                      videoRef.current.volume = 1.0
-                      setIsMuted(false)
-                      setShowDirectUnmuteBanner(false)
-                    }
-                    cleanupListeners()
-                  }
-
-                  const handleParentMsg = (e: MessageEvent) => {
-                    if (e.data?.type === 'VTURB_PARENT_INTERACTION') {
-                      unlockAudio()
-                    }
-                  }
-
-                  const cleanupListeners = () => {
-                    ;['click', 'touchstart', 'scroll', 'keydown', 'pointerdown'].forEach((evt) => {
-                      window.removeEventListener(evt, unlockAudio)
-                      document.removeEventListener(evt, unlockAudio)
-                    })
-                    window.removeEventListener('message', handleParentMsg)
-                  }
-
-                  ;['click', 'touchstart', 'scroll', 'keydown', 'pointerdown'].forEach((evt) => {
-                    window.addEventListener(evt, unlockAudio, { once: true, passive: true })
-                    document.addEventListener(evt, unlockAudio, { once: true, passive: true })
-                  })
-                  window.addEventListener('message', handleParentMsg, { once: true })
-                }
-              })
-            } else {
-              setIsPlaying(true)
-              sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
-            }
-          }
-
-          try {
-            attemptPlay()
-          } catch {}
-        }
-      } else {
-        // Modo Smart Autoplay Padrão (com chamada animada para desmutar)
-        setIsSmartAutoplaying(true)
-        setIsMuted(true)
-        if (videoRef.current) {
-          videoRef.current.muted = true
-          try {
-            const p = videoRef.current.play()
-            if (p && typeof p.then === 'function') {
-              p.then(() => setIsPlaying(true)).catch(() => {})
-            } else {
-              setIsPlaying(true)
-            }
-          } catch {}
-        }
-      }
-    }
-  }, [video, videoId, visitorId])
-
-  // Observer para Player Flutuante (Picture-in-Picture)
   useEffect(() => {
     const floating = video?.player_settings?.floating_player
     if (!floating?.enabled || floatingDismissed || !containerRef.current) return
@@ -218,11 +118,17 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     return () => observer.disconnect()
   }, [video, floatingDismissed])
 
-  // Disparo de eventos de Pixels de Rastreamento
-  const dispatchPixelEvent = (triggerKey: 'percent_25' | 'percent_50' | 'percent_75' | 'percent_100' | 'pitch') => {
-    if (pixelEventsSent.current[triggerKey]) return
-    pixelEventsSent.current[triggerKey] = true
-    triggerTrackingPixels(triggerKey, videoId, video?.player_settings?.tracking_pixels)
+  const handleTimeUpdate = () => {
+    if (!videoRef.current || !video) return
+    const current = videoRef.current.currentTime
+    const total = videoRef.current.duration || video.duration || 0
+
+    setCurrentTime(current)
+    if (total > 0 && total !== duration) {
+      setDuration(total)
+    }
+
+    handleTimeUpdateProgress(current, total)
   }
 
   const handlePlay = () => {
@@ -266,74 +172,95 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     })
   }
 
-  const handleTimeUpdate = () => {
-    if (!videoRef.current || !video) return
-    const current = videoRef.current.currentTime
-    const total = videoRef.current.duration || video.duration
-
-    if (total > 0) {
-      const pct = (current / total) * 100
-
-      if (pct >= 25 && !progressSent.current['25']) {
-        progressSent.current['25'] = true
-        sendTelemetryEvent(videoId, { event_type: 'progress_25', watch_time_seconds: current, session_id: visitorId })
-        dispatchPixelEvent('percent_25')
-      }
-      if (pct >= 50 && !progressSent.current['50']) {
-        progressSent.current['50'] = true
-        sendTelemetryEvent(videoId, { event_type: 'progress_50', watch_time_seconds: current, session_id: visitorId })
-        dispatchPixelEvent('percent_50')
-      }
-      if (pct >= 75 && !progressSent.current['75']) {
-        progressSent.current['75'] = true
-        sendTelemetryEvent(videoId, { event_type: 'progress_75', watch_time_seconds: current, session_id: visitorId })
-        dispatchPixelEvent('percent_75')
-      }
-    }
-
-    // Gatilho de Pitch Delay (Conteúdo Oculto)
-    if (video.player_settings?.pitch_delay?.enabled && !pitchDelaySent.current) {
-      const pitchSeconds = video.player_settings.pitch_delay.time || 60
-      if (current >= pitchSeconds) {
-        pitchDelaySent.current = true
-        dispatchPixelEvent('pitch')
-        const payload = {
-          type: 'VTURB_PITCH_REACHED',
-          videoId,
-          targetSelector: video.player_settings.pitch_delay.target_css_selector || '.delay-pitch',
-          autoScroll: video.player_settings.pitch_delay.auto_scroll ?? true,
-          scrollOffset: video.player_settings.pitch_delay.scroll_offset || 50,
-          persistence: video.player_settings.pitch_delay.persistence ?? true,
-        }
-        if (typeof window !== 'undefined') {
-          window.parent?.postMessage(payload, '*')
-          window.postMessage(payload, '*')
-          try {
-            const el = document.querySelector(payload.targetSelector)
-            if (el) (el as HTMLElement).style.display = 'block'
-          } catch {}
-        }
-      }
-    }
-
-    // Verifica delay do botão de CTA
-    if (video.player_settings?.cta_enabled) {
-      if (current >= video.player_settings.cta_time && !showCta) {
-        setShowCta(true)
-      }
+  const handleTogglePlay = () => {
+    if (!videoRef.current) return
+    if (videoRef.current.paused) {
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
+      sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+    } else {
+      videoRef.current.pause()
+      setIsPlaying(false)
     }
   }
 
-  const handleEnded = () => {
-    if (!progressSent.current['100']) {
-      progressSent.current['100'] = true
-      sendTelemetryEvent(videoId, {
-        event_type: 'progress_100',
-        watch_time_seconds: videoRef.current?.duration || 0,
-        session_id: visitorId,
-      })
-      dispatchPixelEvent('percent_100')
+  const handleToggleMute = () => {
+    if (!videoRef.current) return
+    const next = !videoRef.current.muted
+    videoRef.current.muted = next
+    setIsMuted(next)
+    if (!next && videoRef.current.volume === 0) {
+      videoRef.current.volume = 1.0
+      setVolumeLevel(1.0)
     }
+  }
+
+  const handleVolumeChange = (newVal: number) => {
+    if (!videoRef.current) return
+    videoRef.current.volume = newVal
+    setVolumeLevel(newVal)
+    if (newVal === 0) {
+      videoRef.current.muted = true
+      setIsMuted(true)
+    } else if (isMuted) {
+      videoRef.current.muted = false
+      setIsMuted(false)
+    }
+  }
+
+  const handleRewind10 = () => {
+    if (!videoRef.current) return
+    const nextTime = Math.max(0, videoRef.current.currentTime - 10)
+    videoRef.current.currentTime = nextTime
+    setCurrentTime(nextTime)
+  }
+
+  const handleForward10 = () => {
+    if (!videoRef.current) return
+    const maxDur = duration || video?.duration || 60
+    const nextTime = Math.min(maxDur, videoRef.current.currentTime + 10)
+    videoRef.current.currentTime = nextTime
+    setCurrentTime(nextTime)
+  }
+
+  const handleSeek = (seconds: number) => {
+    if (!videoRef.current) return
+    videoRef.current.currentTime = seconds
+    setCurrentTime(seconds)
+  }
+
+  const handleCycleSpeed = () => {
+    const speeds = [1.0, 1.25, 1.5, 2.0]
+    const nextIdx = (speeds.indexOf(currentSpeed) + 1) % speeds.length
+    const next = speeds[nextIdx]
+    setCurrentSpeed(next)
+    if (videoRef.current) {
+      videoRef.current.playbackRate = next
+    }
+  }
+
+  const handleToggleFullscreen = () => {
+    if (!containerRef.current) return
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(() => {})
+    } else {
+      document.exitFullscreen().catch(() => {})
+    }
+  }
+
+  const resetControlsVisibilityTimeout = () => {
+    setAreControlsVisible(true)
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current)
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying) {
+        setAreControlsVisible(false)
+      }
+    }, 3500)
+  }
+
+  const handleEnded = () => {
+    handleEndedTelemetry(videoRef.current?.duration || 0)
   }
 
   const handleCtaClick = () => {
@@ -344,21 +271,13 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
   }
 
   if (loading) {
-    return <div style={{ width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8' }}>Carregando player...</div>
+    return <EmbedLoadingState />
   }
-
   if (error || !video) {
-    return <div style={{ width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', padding: '1rem' }}>{error || 'Vídeo não encontrado'}</div>
+    return <EmbedErrorState error={error} />
   }
-
   if (domainBlocked) {
-    return (
-      <div data-testid="domain-blocked-view" style={{ width: '100%', height: '100%', minHeight: '300px', background: '#0a0a0f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ef4444', padding: '2rem', textAlign: 'center', boxSizing: 'border-box' }}>
-        <ShieldAlert size={56} style={{ marginBottom: '1rem' }} />
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', margin: '0 0 0.5rem 0' }}>Reprodução Não Autorizada</h2>
-        <p style={{ fontSize: '0.9rem', color: '#94a3b8', maxWidth: '420px', lineHeight: 1.5, margin: 0 }}>Este vídeo possui proteção de domínio ativada e não tem autorização para ser reproduzido neste site.</p>
-      </div>
-    )
+    return <EmbedBlockedState />
   }
 
   const primaryColor = video.player_settings?.primary_color || '#6366f1'
@@ -371,6 +290,9 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
       ref={containerRef}
       data-testid="vturb-embed-player"
       onContextMenu={(e) => { if (antiDownloadActive) e.preventDefault() }}
+      onMouseEnter={resetControlsVisibilityTimeout}
+      onMouseMove={resetControlsVisibilityTimeout}
+      onMouseLeave={() => { if (isPlaying) setAreControlsVisible(false) }}
       style={{
         position: isFloatingActive ? 'fixed' : 'relative',
         bottom: isFloatingActive ? '24px' : undefined,
@@ -421,15 +343,47 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
         ref={videoRef}
         src={getMediaUrl(video.video_url)}
         poster={getMediaUrl(video.thumbnail_url)}
-        controls={isPlaying && video.player_settings?.show_controls}
+        controls={false}
         controlsList={antiDownloadActive ? 'nodownload' : undefined}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
-        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        onClick={handleTogglePlay}
+        style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
         playsInline
       />
+
+      {/* Barra de Controles Personalizada do Player (Respeita controles visuais e show_controls) */}
+      {video.player_settings?.show_controls !== false && (isPlaying || areControlsVisible) && !isSmartAutoplaying && (
+        <div
+          style={{
+            opacity: isPlaying && !areControlsVisible ? 0 : 1,
+            pointerEvents: isPlaying && !areControlsVisible ? 'none' : 'auto',
+            transition: 'opacity 0.25s ease',
+          }}
+        >
+          <CustomPlayerControls
+            isPlaying={isPlaying}
+            isMuted={isMuted}
+            volumeLevel={volumeLevel}
+            currentTime={currentTime}
+            duration={duration || video.duration || 60}
+            currentSpeed={currentSpeed}
+            primaryColor={primaryColor}
+            controlsConfig={video.player_settings?.controls_config}
+            chapters={video.player_settings?.chapters}
+            onTogglePlay={handleTogglePlay}
+            onToggleMute={handleToggleMute}
+            onVolumeChange={handleVolumeChange}
+            onRewind10={handleRewind10}
+            onForward10={handleForward10}
+            onCycleSpeed={handleCycleSpeed}
+            onToggleFullscreen={handleToggleFullscreen}
+            onSeek={handleSeek}
+          />
+        </div>
+      )}
 
       {/* Smart Autoplay™ Overlay */}
       {isSmartAutoplaying && (
@@ -468,30 +422,12 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
       )}
 
       {/* Botão de CTA com delay */}
-      {showCta && video.player_settings?.cta_enabled && (
-        <div
-          data-testid="cta-button-container"
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            zIndex: 10,
-            animation: 'fadeInUp 0.5s ease',
-          }}
-        >
-          <a
-            href={video.player_settings.cta_link}
-            target="_top"
-            onClick={handleCtaClick}
-            data-testid="cta-button"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.9rem 1.8rem', borderRadius: '50px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#ffffff', fontWeight: 700, fontSize: '1.05rem', textDecoration: 'none', boxShadow: '0 8px 25px rgba(16, 185, 129, 0.6)', textTransform: 'uppercase', letterSpacing: '0.5px',
-            }}
-          >
-            {video.player_settings.cta_text || 'Quero Comprar Agora'}
-            <ExternalLink size={18} />
-          </a>
-        </div>
-      )}
+      <CtaButtonOverlay
+        show={showCta && Boolean(video.player_settings?.cta_enabled)}
+        ctaLink={video.player_settings?.cta_link}
+        ctaText={video.player_settings?.cta_text}
+        onClick={handleCtaClick}
+      />
     </div>
   )
 }

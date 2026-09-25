@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Code, Copy, Check, ExternalLink, Sliders, Eye } from 'lucide-react'
 import type { Video } from '../../types/video'
+import { generateEmbedCode } from '../../utils/embedScriptGenerator'
 
 interface VideoEmbedTabProps {
   video: Video
@@ -40,79 +41,15 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast }
     '4:3': '75%',
   }
 
-  const listenerScript = `
-<script>
-(function() {
-  window.addEventListener('message', function(e) {
-    if (!e.data) return;
-    if (e.data.type === 'VTURB_PITCH_REACHED') {
-      var sel = e.data.targetSelector || '.delay-pitch';
-      document.querySelectorAll(sel).forEach(function(el) { el.style.display = 'block'; });
-      if (e.data.autoScroll) {
-        var first = document.querySelector(sel);
-        if (first) {
-          var top = first.getBoundingClientRect().top + window.pageYOffset - (e.data.scrollOffset || 50);
-          window.scrollTo({ top: top, behavior: 'smooth' });
-        }
-      }
-      if (e.data.persistence && e.data.videoId) {
-        try { localStorage.setItem('vturb_pitch_' + e.data.videoId, '1'); } catch(err) {}
-      }
-    }
-    if (e.data.type === 'VTURB_PIXEL_TRACK') {
-      var evt = e.data.eventName;
-      if (typeof window.fbq === 'function') window.fbq('trackCustom', evt, { video_id: e.data.videoId });
-      if (typeof window.gtag === 'function') window.gtag('event', evt, { video_id: e.data.videoId });
-      if (typeof window.ttq === 'function' && typeof window.ttq.track === 'function') window.ttq.track(evt, { video_id: e.data.videoId });
-    }
-  });
-  // Listener para desbloquear áudio de imediato na menor interação
-  var unlocked = false;
-  function notifyIframe() {
-    if (unlocked) return;
-    unlocked = true;
-    var ifr = document.querySelector('iframe[src*="${video.id}"]');
-    if (ifr && ifr.contentWindow) {
-      try { ifr.contentWindow.postMessage({ type: 'VTURB_PARENT_INTERACTION' }, '*'); } catch(e) {}
-    }
-  }
-  ['click', 'touchstart', 'scroll', 'keydown'].forEach(function(evt) {
-    window.addEventListener(evt, notifyIframe, { once: true, passive: true });
-  });
-  try {
-    if (localStorage.getItem('vturb_pitch_${video.id}') === '1') {
-      var sel = '${video.player_settings?.pitch_delay?.target_css_selector || '.delay-pitch'}';
-      document.querySelectorAll(sel).forEach(function(el) { el.style.display = 'block'; });
-    }
-  } catch(err) {}
-})();
-</script>`
-
-  let iframeCode = ''
-  let scriptCode = ''
-
-  if (heightPreset === 'custom' && resolvedHeight) {
-    iframeCode = `<div style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
-  <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
-</div>${listenerScript}`
-    scriptCode = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
-  <iframe src="${embedUrl}" style="width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
-</div>${listenerScript}`
-  } else {
-    const pTop = paddingTopMap[heightPreset] || '56.25%'
-    iframeCode = `<div style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
-  <div style="position:relative;width:100%;padding-top:${pTop};">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
-  </div>
-</div>${listenerScript}`
-    scriptCode = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
-  <div style="position:relative;width:100%;padding-top:${pTop};">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
-  </div>
-</div>${listenerScript}`
-  }
-
-  const currentCode = embedType === 'iframe' ? iframeCode : scriptCode
+  const currentCode = generateEmbedCode({
+    video,
+    embedUrl,
+    embedType,
+    resolvedWidth,
+    resolvedHeight,
+    heightPreset,
+    paddingTopMap,
+  })
 
   const handleCopy = async () => {
     try {

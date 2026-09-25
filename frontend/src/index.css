@@ -27,3 +27,13 @@ html, body {
   overflow: hidden;
 }
 
+/* Modo Embed: Fundo preto e sem bordas para iframes em sites externos */
+html.embed-mode,
+html.embed-mode body,
+body.embed-mode,
+.embed-mode #root {
+  background-color: #000000 !important;
+  color: #ffffff;
+  overflow: hidden;
+}
+

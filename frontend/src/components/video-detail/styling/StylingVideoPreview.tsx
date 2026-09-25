@@ -4,13 +4,12 @@ import {
   Pause,
   RotateCcw,
   RotateCw,
-  Volume2,
-  VolumeX,
   Maximize,
   Sparkles,
   Smartphone,
   Monitor,
 } from 'lucide-react'
+import { VolumeControl } from '../../VolumeControl'
 import type { Video, ChaptersSettings } from '../../../types/video'
 import { getMediaUrl } from '../../../services/api'
 
@@ -53,6 +52,7 @@ export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(video.duration || 60)
   const [isMuted, setIsMuted] = useState(false)
+  const [volumeLevel, setVolumeLevel] = useState(1.0)
   const [currentSpeed, setCurrentSpeed] = useState(1.0)
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -109,6 +109,23 @@ export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
     const nextMute = !isMuted
     videoRef.current.muted = nextMute
     setIsMuted(nextMute)
+    if (!nextMute && videoRef.current.volume === 0) {
+      videoRef.current.volume = 1.0
+      setVolumeLevel(1.0)
+    }
+  }
+
+  const handleVolumeChange = (val: number) => {
+    if (!videoRef.current) return
+    videoRef.current.volume = val
+    setVolumeLevel(val)
+    if (val === 0) {
+      videoRef.current.muted = true
+      setIsMuted(true)
+    } else if (isMuted) {
+      videoRef.current.muted = false
+      setIsMuted(false)
+    }
   }
 
   const cycleSpeed = () => {
@@ -163,18 +180,10 @@ export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
             data-testid="preview-toggle-16-9"
             onClick={() => onAspectRatioChange?.('16:9')}
             style={{
-              padding: '0.3rem 0.65rem',
-              borderRadius: '6px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
+              padding: '0.3rem 0.65rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
               border: aspectRatio === '16:9' ? '1px solid #4f46e5' : '1px solid #e2e8f0',
-              background: aspectRatio === '16:9' ? '#eef2ff' : '#ffffff',
-              color: aspectRatio === '16:9' ? '#4338ca' : '#64748b',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease',
+              background: aspectRatio === '16:9' ? '#eef2ff' : '#ffffff', color: aspectRatio === '16:9' ? '#4338ca' : '#64748b',
+              display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.15s ease',
             }}
           >
             <Monitor size={14} />
@@ -185,18 +194,10 @@ export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
             data-testid="preview-toggle-9-16"
             onClick={() => onAspectRatioChange?.('9:16')}
             style={{
-              padding: '0.3rem 0.65rem',
-              borderRadius: '6px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
+              padding: '0.3rem 0.65rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
               border: aspectRatio === '9:16' ? '1px solid #4f46e5' : '1px solid #e2e8f0',
-              background: aspectRatio === '9:16' ? '#eef2ff' : '#ffffff',
-              color: aspectRatio === '9:16' ? '#4338ca' : '#64748b',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease',
+              background: aspectRatio === '9:16' ? '#eef2ff' : '#ffffff', color: aspectRatio === '9:16' ? '#4338ca' : '#64748b',
+              display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.15s ease',
             }}
           >
             <Smartphone size={14} />
@@ -417,15 +418,14 @@ export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
               )}
 
               {volume && (
-                <button
-                  type="button"
-                  data-testid="preview-control-volume"
-                  onClick={toggleMute}
-                  title={isMuted ? 'Desmutar' : 'Mutar'}
-                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px', display: 'flex' }}
-                >
-                  {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                </button>
+                <VolumeControl
+                  volume={volumeLevel}
+                  isMuted={isMuted}
+                  primaryColor={primaryColor}
+                  onVolumeChange={handleVolumeChange}
+                  onToggleMute={toggleMute}
+                  testIdPrefix="preview"
+                />
               )}
 
               {videoTime && (
