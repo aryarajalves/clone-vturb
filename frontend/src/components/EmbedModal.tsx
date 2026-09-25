@@ -24,6 +24,7 @@ export const EmbedModal: React.FC<EmbedModalProps> = ({ video, isOpen, onClose }
 
   const origin = window.location.origin
   const embedUrl = `${origin}/?embed=${video.id}`
+  const previewTestUrl = `${origin}/?preview=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}`
 
   // Resolução de dimensões calculadas
   const resolvedWidth =
@@ -342,9 +343,11 @@ export const EmbedModal: React.FC<EmbedModalProps> = ({ video, isOpen, onClose }
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <a
-            href={embedUrl}
+            href={previewTestUrl}
+            data-testid="embed-modal-preview-link"
             target="_blank"
             rel="noopener noreferrer"
+            title="Abrir página de teste com scroll para validar player flutuante e autoplay"
             style={{
               color: '#60a5fa',
               fontSize: '0.85rem',
@@ -354,7 +357,7 @@ export const EmbedModal: React.FC<EmbedModalProps> = ({ video, isOpen, onClose }
               textDecoration: 'none',
             }}
           >
-            Abrir Player em Nova Aba <ExternalLink size={14} />
+            Abrir em Nova Aba (Página de Teste) <ExternalLink size={14} />
           </a>
 
           <button

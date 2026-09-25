@@ -22,6 +22,7 @@ import { UserManagementView } from './components/users/UserManagementView'
 import { AcceptInviteView } from './components/auth/AcceptInviteView'
 import { ResetPasswordView } from './components/auth/ResetPasswordView'
 import { BackupManagementView } from './components/backup/BackupManagementView'
+import { VideoPreviewTestPage } from './components/preview/VideoPreviewTestPage'
 import './App.css'
 
 function App() {
@@ -39,6 +40,18 @@ function App() {
       document.body.classList.add('embed-mode')
     }
     return <EmbedPlayer videoId={embedId} />
+  }
+
+  const previewVideoId =
+    searchParams.get('preview') ||
+    searchParams.get('test') ||
+    (window.location.pathname.startsWith('/preview/')
+      ? window.location.pathname.replace('/preview/', '')
+      : null)
+
+  // Página de teste público com scroll, textos e player flutuante
+  if (previewVideoId) {
+    return <VideoPreviewTestPage videoId={previewVideoId} />
   }
 
   const inviteToken =

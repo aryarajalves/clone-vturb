@@ -41,6 +41,7 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast, 
 
   const origin = window.location.origin
   const embedUrl = `${origin}/?embed=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}${transparentBg ? '&transparent=1' : ''}`
+  const previewTestUrl = `${origin}/?preview=${video.id}&ratio=${heightPreset}&width=${encodeURIComponent(resolvedWidth)}${transparentBg ? '&transparent=1' : ''}`
 
   const paddingTopMap: Record<string, string> = {
     '16:9': '56.25%',
@@ -279,9 +280,11 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast, 
           Dimensão configurada: <strong style={{ color: '#0f172a' }}>{resolvedWidth}</strong> ({heightPreset === 'custom' ? `${customHeight} fixa` : `proporção ${heightPreset}`})
         </span>
         <a
-          href={embedUrl}
+          href={previewTestUrl}
+          data-testid="open-preview-tab-btn"
           target="_blank"
           rel="noopener noreferrer"
+          title="Abrir página de teste com scroll para validar player flutuante e autoplay"
           style={{
             color: '#4f46e5',
             fontSize: '0.82rem',
