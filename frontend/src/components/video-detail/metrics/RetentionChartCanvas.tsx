@@ -5,7 +5,7 @@ import { getMediaUrl } from '../../../services/api'
 import { getYCoordinate } from './retentionChartHelpers'
 
 interface RetentionChartCanvasProps {
-  chartRef: React.RefObject<HTMLDivElement>
+  chartRef: React.RefObject<HTMLDivElement | null>
   onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void
   video: Video
   activeAreaD: string
