@@ -128,8 +128,7 @@ export function generateEmbedCode({
       if (!wrapper || !ifr) return;
       var shouldFloat = isFloatingConfig && !isFloatingDismissed && !isIntersecting;
       if (shouldFloat) {
-        var isVertical = '${video.player_settings?.aspect_ratio || '16:9'}' === '9:16';
-        var floatHeight = isVertical ? Math.round(floatingWidth * 16 / 9) : Math.round(floatingWidth * 9 / 16);
+        var floatHeight = Math.round(floatingWidth * 9 / 16);
         ifr.style.position = 'fixed';
         ifr.style.bottom = '24px';
         if (floatingPos === 'bottom-left') {
@@ -142,6 +141,7 @@ export function generateEmbedCode({
         ifr.style.width = floatingWidth + 'px';
         ifr.style.height = floatHeight + 'px';
         ifr.style.zIndex = '99999';
+        ifr.style.backgroundColor = '#000000';
         ifr.style.borderRadius = '12px';
         ifr.style.boxShadow = '0 12px 35px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.15)';
         ifr.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
