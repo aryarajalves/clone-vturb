@@ -97,6 +97,8 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     setShowDirectUnmuteBanner,
   })
 
+  const isInsideIframe = typeof window !== 'undefined' && window !== window.top
+
   // Observer para Player Flutuante interno e notificação do estado para janela mãe (site externo)
   useEffect(() => {
     try {
@@ -106,7 +108,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
   useEffect(() => {
     const floating = video?.player_settings?.floating_player
-    if (!floating?.enabled || floatingDismissed || !containerRef.current) return
+    if (!floating?.enabled || floatingDismissed || !containerRef.current || isInsideIframe) return
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -117,7 +119,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
     observer.observe(containerRef.current)
     return () => observer.disconnect()
-  }, [video, floatingDismissed])
+  }, [video, floatingDismissed, isInsideIframe])
 
   const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
   const rawRatio = queryParams.get('ratio') || queryParams.get('aspect_ratio')
@@ -125,7 +127,6 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     ? '9:16'
     : (rawRatio === '4:3' ? '4:3' : (rawRatio === '16:9' ? '16:9' : video?.player_settings?.aspect_ratio || '16:9'))
   const configuredWidth = queryParams.get('width') || queryParams.get('max_width') || video?.player_settings?.default_width
-  const isInsideIframe = typeof window !== 'undefined' && window !== window.top
 
   const isTransparent = isInsideIframe && Boolean(
     video?.player_settings?.transparent_background ||
@@ -291,7 +292,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
   const primaryColor = video.player_settings?.primary_color || '#6366f1'
   const floatingConfig = video.player_settings?.floating_player
-  const isFloatingActive = isFloating && !floatingDismissed && Boolean(floatingConfig?.enabled)
+  const isFloatingActive = !isInsideIframe && isFloating && !floatingDismissed && Boolean(floatingConfig?.enabled)
   const antiDownloadActive = video.player_settings?.domain_protection?.anti_download !== false
 
   return (

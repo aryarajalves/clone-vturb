@@ -52,9 +52,10 @@ describe('embedScriptGenerator and Floating Player Integration', () => {
     expect(code).toContain('var floatingWidth = 280;')
     // Deve conter botão de fechar flutuante
     expect(code).toContain("'vturb-close-floating-' + videoId")
-    // Deve conter o observer de visibilidade
+    // Deve conter o observer de visibilidade com histerese
     expect(code).toContain('IntersectionObserver')
-    expect(code).toContain('updateFloatingState()')
+    expect(code).toContain('updateFloatingState')
+    expect(code).toContain("ifr.style.transition = 'none';")
     // Deve resetar top para auto e aplicar bottom: 24px para evitar ficar preso no topo
     expect(code).toContain("ifr.style.top = 'auto';")
     expect(code).toContain("ifr.style.bottom = '24px';")

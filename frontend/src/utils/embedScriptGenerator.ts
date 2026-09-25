@@ -119,14 +119,18 @@ export function generateEmbedCode({
       closeBtn.onclick = function(ev) {
         ev.stopPropagation();
         isFloatingDismissed = true;
-        updateFloatingState();
+        window.updateFloatingState(false);
       };
       document.body.appendChild(closeBtn);
     }
 
-    window.updateFloatingState = function() {
+    var isCurrentlyFloating = false;
+
+    window.updateFloatingState = function(forceState) {
       if (!wrapper || !ifr) return;
-      var shouldFloat = isFloatingConfig && !isFloatingDismissed && !isIntersecting;
+      var shouldFloat = (typeof forceState === 'boolean' ? forceState : isCurrentlyFloating) && isFloatingConfig && !isFloatingDismissed;
+      isCurrentlyFloating = shouldFloat;
+
       if (shouldFloat) {
         var floatHeight = Math.round(floatingWidth * 9 / 16);
         ifr.style.position = 'fixed';
@@ -145,7 +149,7 @@ export function generateEmbedCode({
         ifr.style.backgroundColor = '#000000';
         ifr.style.borderRadius = '12px';
         ifr.style.boxShadow = '0 12px 35px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.15)';
-        ifr.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+        ifr.style.transition = 'box-shadow 0.2s ease, border-radius 0.2s ease';
 
         if (closeBtn) {
           closeBtn.style.display = 'flex';
@@ -160,6 +164,7 @@ export function generateEmbedCode({
           }
         }
       } else {
+        ifr.style.transition = 'none';
         ifr.style.position = 'absolute';
         ifr.style.top = '0';
         ifr.style.left = '0';
@@ -180,10 +185,19 @@ export function generateEmbedCode({
     if ('IntersectionObserver' in window) {
       var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
-          isIntersecting = entry.isIntersecting;
-          updateFloatingState();
+          var rect = entry.boundingClientRect;
+          var pastTop = rect.bottom < 80;
+          if (!isCurrentlyFloating) {
+            if (pastTop && entry.intersectionRatio < 0.15) {
+              window.updateFloatingState(true);
+            }
+          } else {
+            if (!pastTop || entry.intersectionRatio > 0.35) {
+              window.updateFloatingState(false);
+            }
+          }
         });
-      }, { threshold: 0.1 });
+      }, { threshold: [0, 0.1, 0.2, 0.35, 0.5] });
       observer.observe(wrapper);
     }
   }
