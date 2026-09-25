@@ -8,6 +8,7 @@ interface EmbedCodeOptions {
   resolvedHeight: string | null
   heightPreset: string
   paddingTopMap: Record<string, string>
+  transparentBg?: boolean
 }
 
 export function generateEmbedCode({
@@ -18,6 +19,7 @@ export function generateEmbedCode({
   resolvedHeight,
   heightPreset,
   paddingTopMap,
+  transparentBg,
 }: EmbedCodeOptions): string {
   const isFloatingEnabled = Boolean(video.player_settings?.floating_player?.enabled)
   const floatingPos = video.player_settings?.floating_player?.position || 'bottom-right'
@@ -125,6 +127,7 @@ export function generateEmbedCode({
     window.updateFloatingState = function() {
       if (!wrapper || !ifr) return;
       var shouldFloat = isFloatingConfig && !isFloatingDismissed && !isIntersecting && isVideoPlaying;
+      if (shouldFloat) {
         var isVertical = '${video.player_settings?.aspect_ratio || '16:9'}' === '9:16';
         var floatHeight = isVertical ? Math.round(floatingWidth * 16 / 9) : Math.round(floatingWidth * 9 / 16);
         ifr.style.position = 'fixed';
@@ -191,28 +194,36 @@ export function generateEmbedCode({
 })();
 </script>`
 
+  const isTransparent = Boolean(transparentBg ?? video.player_settings?.transparent_background)
+  let finalEmbedUrl = embedUrl
+  if (isTransparent && !finalEmbedUrl.includes('transparent=')) {
+    finalEmbedUrl += (finalEmbedUrl.includes('?') ? '&' : '?') + 'transparent=1'
+  }
+  const bgStyle = isTransparent ? 'background:transparent;' : ''
+  const allowTransp = isTransparent ? ' allowtransparency="true"' : ''
+
   let iframeInner = ''
   let scriptInner = ''
 
   if (heightPreset === 'custom' && resolvedHeight) {
-    iframeInner = `<div id="vturb-wrapper-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
-  <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
+    iframeInner = `<div id="vturb-wrapper-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;${bgStyle}">
+  <iframe src="${finalEmbedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;${bgStyle}" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen${allowTransp}></iframe>
 </div>`
-    scriptInner = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;">
-  <div id="vturb-wrapper-${video.id}" style="width:100%;height:100%;position:relative;">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
+    scriptInner = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;height:${resolvedHeight};margin:0 auto;position:relative;${bgStyle}">
+  <div id="vturb-wrapper-${video.id}" style="width:100%;height:100%;position:relative;${bgStyle}">
+    <iframe src="${finalEmbedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;${bgStyle}" allow="autoplay *; fullscreen *; encrypted-media *"${allowTransp}></iframe>
   </div>
 </div>`
   } else {
     const pTop = paddingTopMap[heightPreset] || '56.25%'
-    iframeInner = `<div id="vturb-wrapper-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
-  <div style="position:relative;width:100%;padding-top:${pTop};">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen></iframe>
+    iframeInner = `<div id="vturb-wrapper-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;${bgStyle}">
+  <div style="position:relative;width:100%;padding-top:${pTop};${bgStyle}">
+    <iframe src="${finalEmbedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;${bgStyle}" allow="autoplay *; fullscreen *; encrypted-media *" allowfullscreen${allowTransp}></iframe>
   </div>
 </div>`
-    scriptInner = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;">
-  <div id="vturb-wrapper-${video.id}" style="position:relative;width:100%;padding-top:${pTop};">
-    <iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;" allow="autoplay *; fullscreen *; encrypted-media *"></iframe>
+    scriptInner = `<div id="vturb-player-${video.id}" style="max-width:${resolvedWidth};width:100%;margin:0 auto;${bgStyle}">
+  <div id="vturb-wrapper-${video.id}" style="position:relative;width:100%;padding-top:${pTop};${bgStyle}">
+    <iframe src="${finalEmbedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:${video.player_settings?.border_radius ?? 0}px;${bgStyle}" allow="autoplay *; fullscreen *; encrypted-media *"${allowTransp}></iframe>
   </div>
 </div>`
   }

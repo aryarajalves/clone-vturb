@@ -1,6 +1,6 @@
-# Clone do VTurb - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.5`
+# Clone do VTurb - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.6`
 
-[![Versão](https://img.shields.io/badge/versão-1.0.5-blue.svg)](README.md)
+[![Versão](https://img.shields.io/badge/versão-1.0.6-blue.svg)](README.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker-compose.prod.yml)
 [![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
@@ -220,8 +220,22 @@ npm test
 
 | Imagem | Versão Atual | Descrição |
 |---|---|---|
-| `aryalvesfernandes/clone-vturb:frontend-1.0.5` | `1.0.5` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
-| `aryalvesfernandes/clone-vturb:backend-1.0.5` | `1.0.5` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+| `aryalvesfernandes/clone-vturb:frontend-1.0.6` | `1.0.6` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
+| `aryalvesfernandes/clone-vturb:backend-1.0.6` | `1.0.6` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+
+### 🚀 Novidades da Versão 1.0.6
+- **Modo "Apenas o Vídeo" (`transparent_background`)**:
+  - Nova opção no painel de estilo para remover qualquer barra preta lateral/superior/inferior de padding ao redor do vídeo no container do player.
+  - O container adapta-se diretamente à proporção exata da mídia, permitindo embeds perfeitos e sem bordas pretas em páginas de vendas externas.
+- **Eliminação de tela branca nos primeiros segundos**:
+  - Solução contra a transparência padrão do elemento `<video>` em HTML5 antes do buffering inicial.
+  - Implementação de fundo sólido `#000000` durante o estado de carregamento (`!isVideoReady`) e transição suave para transparência assim que o primeiro frame é decodificado (`onLoadedData`/`readyState >= 2`).
+  - Auto-poster nativo via `#t=0.001` adicionado à URL da mídia quando `thumbnail_url` não estiver definido, permitindo a prévia instantânea do primeiro frame sem flash branco.
+  - Micro-spinner suave exibido durante o carregamento inicial.
+- **Resiliência e Correção de Crash em Controles Customizados**:
+  - Correção em `CustomPlayerControls.tsx` garantindo fallback seguro para `controls_config: null` sem quebra da renderização do componente.
+- **Suíte de Testes Automatizados Expandida**:
+  - 137 testes unitários frontend (Vitest) e 41 testes backend (Pytest) 100% aprovados.
 
 ### 🚀 Novidades da Versão 1.0.5
 - **Eliminação de tela branca no Embed**: Script inline em `index.html` e tema dark garantido antes da renderização do bundle;

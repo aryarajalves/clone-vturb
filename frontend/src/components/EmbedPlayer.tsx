@@ -28,6 +28,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
   const domainBlocked = useDomainProtection(video)
   const [isSmartAutoplaying, setIsSmartAutoplaying] = useState(false)
   const [showDirectUnmuteBanner, setShowDirectUnmuteBanner] = useState(false)
+  const [isVideoReady, setIsVideoReady] = useState(false)
   const [isFloating, setIsFloating] = useState(false)
   const [floatingDismissed, setFloatingDismissed] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -118,16 +119,66 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     return () => observer.disconnect()
   }, [video, floatingDismissed])
 
+  const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
+  const rawRatio = queryParams.get('ratio') || queryParams.get('aspect_ratio')
+  const effectiveRatio = (rawRatio === '9:16' || rawRatio === '9-16' || rawRatio === '9/16')
+    ? '9:16'
+    : (rawRatio === '4:3' ? '4:3' : (rawRatio === '16:9' ? '16:9' : video?.player_settings?.aspect_ratio || '16:9'))
+  const configuredWidth = queryParams.get('width') || queryParams.get('max_width') || video?.player_settings?.default_width
+  const isInsideIframe = typeof window !== 'undefined' && window !== window.top
+
+  const isTransparent = isInsideIframe && Boolean(
+    video?.player_settings?.transparent_background ||
+    queryParams.get('transparent') === '1' ||
+    queryParams.get('transparent') === 'true'
+  )
+
+  // Ativa transparência somente após o primeiro frame real do vídeo estar pintado na tela
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+
+    let cancelled = false
+    const onFramePainted = () => {
+      if (!cancelled) setIsVideoReady(true)
+    }
+
+    if ('requestVideoFrameCallback' in el && typeof (el as any).requestVideoFrameCallback === 'function') {
+      (el as any).requestVideoFrameCallback(() => onFramePainted())
+    }
+
+    const onPlaying = () => {
+      requestAnimationFrame(() => {
+        if (el.currentTime > 0 || el.readyState >= 3) onFramePainted()
+      })
+    }
+
+    el.addEventListener('playing', onPlaying)
+    return () => {
+      cancelled = true
+      el.removeEventListener('playing', onPlaying)
+    }
+  }, [video])
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isTransparent && isVideoReady) {
+        document.documentElement.classList.add('transparent-bg')
+        document.body.classList.add('transparent-bg')
+      } else {
+        document.documentElement.classList.remove('transparent-bg')
+        document.body.classList.remove('transparent-bg')
+      }
+    }
+  }, [isTransparent, isVideoReady])
+
   const handleTimeUpdate = () => {
     if (!videoRef.current || !video) return
     const current = videoRef.current.currentTime
     const total = videoRef.current.duration || video.duration || 0
-
     setCurrentTime(current)
-    if (total > 0 && total !== duration) {
-      setDuration(total)
-    }
-
+    if (total > 0 && total !== duration) setDuration(total)
+    if (current > 0.05 && !isVideoReady) setIsVideoReady(true)
     handleTimeUpdateProgress(current, total)
   }
 
@@ -136,17 +187,9 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
       if (video?.player_settings?.playback_rate) {
         videoRef.current.playbackRate = Number(video.player_settings.playback_rate) || 1.0
       }
-      try {
-        const p = videoRef.current.play()
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => {})
-        }
-      } catch {}
+      videoRef.current.play().catch(() => {})
       setIsPlaying(true)
-      sendTelemetryEvent(videoId, {
-        event_type: 'play',
-        session_id: visitorId,
-      })
+      sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
     }
   }
 
@@ -155,21 +198,11 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     const smart = video?.player_settings?.smart_autoplay
     videoRef.current.muted = false
     setIsMuted(false)
-    if (smart?.restart_on_unmute) {
-      videoRef.current.currentTime = 0
-    }
-    try {
-      const p = videoRef.current.play()
-      if (p && typeof p.catch === 'function') {
-        p.catch(() => {})
-      }
-    } catch {}
+    if (smart?.restart_on_unmute) videoRef.current.currentTime = 0
+    videoRef.current.play().catch(() => {})
     setIsPlaying(true)
     setIsSmartAutoplaying(false)
-    sendTelemetryEvent(videoId, {
-      event_type: 'play',
-      session_id: visitorId,
-    })
+    sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
   }
 
   const handleTogglePlay = () => {
@@ -209,17 +242,17 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
   const handleRewind10 = () => {
     if (!videoRef.current) return
-    const nextTime = Math.max(0, videoRef.current.currentTime - 10)
-    videoRef.current.currentTime = nextTime
-    setCurrentTime(nextTime)
+    const next = Math.max(0, videoRef.current.currentTime - 10)
+    videoRef.current.currentTime = next
+    setCurrentTime(next)
   }
 
   const handleForward10 = () => {
     if (!videoRef.current) return
     const maxDur = duration || video?.duration || 60
-    const nextTime = Math.min(maxDur, videoRef.current.currentTime + 10)
-    videoRef.current.currentTime = nextTime
-    setCurrentTime(nextTime)
+    const next = Math.min(maxDur, videoRef.current.currentTime + 10)
+    videoRef.current.currentTime = next
+    setCurrentTime(next)
   }
 
   const handleSeek = (seconds: number) => {
@@ -230,55 +263,31 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
   const handleCycleSpeed = () => {
     const speeds = [1.0, 1.25, 1.5, 2.0]
-    const nextIdx = (speeds.indexOf(currentSpeed) + 1) % speeds.length
-    const next = speeds[nextIdx]
+    const next = speeds[(speeds.indexOf(currentSpeed) + 1) % speeds.length]
     setCurrentSpeed(next)
-    if (videoRef.current) {
-      videoRef.current.playbackRate = next
-    }
+    if (videoRef.current) videoRef.current.playbackRate = next
   }
 
   const handleToggleFullscreen = () => {
     if (!containerRef.current) return
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(() => {})
-    } else {
-      document.exitFullscreen().catch(() => {})
-    }
+    if (!document.fullscreenElement) containerRef.current.requestFullscreen().catch(() => {})
+    else document.exitFullscreen().catch(() => {})
   }
 
   const resetControlsVisibilityTimeout = () => {
     setAreControlsVisible(true)
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current)
-    }
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) {
-        setAreControlsVisible(false)
-      }
+      if (isPlaying) setAreControlsVisible(false)
     }, 3500)
   }
 
-  const handleEnded = () => {
-    handleEndedTelemetry(videoRef.current?.duration || 0)
-  }
+  const handleEnded = () => handleEndedTelemetry(videoRef.current?.duration || 0)
+  const handleCtaClick = () => sendTelemetryEvent(videoId, { event_type: 'click', session_id: visitorId })
 
-  const handleCtaClick = () => {
-    sendTelemetryEvent(videoId, {
-      event_type: 'click',
-      session_id: visitorId,
-    })
-  }
-
-  if (loading) {
-    return <EmbedLoadingState />
-  }
-  if (error || !video) {
-    return <EmbedErrorState error={error} />
-  }
-  if (domainBlocked) {
-    return <EmbedBlockedState />
-  }
+  if (loading) return <EmbedLoadingState />
+  if (error || !video) return <EmbedErrorState error={error} />
+  if (domainBlocked) return <EmbedBlockedState />
 
   const primaryColor = video.player_settings?.primary_color || '#6366f1'
   const floatingConfig = video.player_settings?.floating_player
@@ -299,17 +308,21 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
         right: isFloatingActive ? (floatingConfig?.position === 'bottom-left' ? undefined : '24px') : undefined,
         left: isFloatingActive ? (floatingConfig?.position === 'bottom-left' ? '24px' : undefined) : undefined,
         width: isFloatingActive ? `${floatingConfig?.width || 320}px` : '100%',
-        maxWidth: isFloatingActive ? undefined : (video.player_settings?.aspect_ratio === '9:16' ? '450px' : '100%'),
-        aspectRatio: isFloatingActive ? undefined : (video.player_settings?.aspect_ratio === '9:16' ? '9/16' : undefined),
+        maxWidth: isFloatingActive ? undefined : !isInsideIframe ? (configuredWidth ? (configuredWidth.endsWith('px') || configuredWidth.endsWith('%') ? configuredWidth : `${configuredWidth}px`) : (effectiveRatio === '9:16' ? '450px' : '100%')) : '100%',
+        aspectRatio: isFloatingActive || isInsideIframe ? undefined : (effectiveRatio === '9:16' ? '9/16' : effectiveRatio === '4:3' ? '4/3' : undefined),
         margin: isFloatingActive ? undefined : '0 auto',
         height: isFloatingActive ? 'auto' : '100%',
         minHeight: isFloatingActive ? '180px' : '100%',
-        maxHeight: isFloatingActive ? '240px' : undefined,
+        maxHeight: isFloatingActive ? '240px' : (!isInsideIframe && effectiveRatio === '9:16' ? '92vh' : undefined),
         zIndex: isFloatingActive ? 9999 : 1,
         borderRadius: isFloatingActive ? '16px' : `${video.player_settings?.border_radius ?? 0}px`,
         boxShadow: isFloatingActive ? '0 20px 45px rgba(0, 0, 0, 0.75), 0 0 0 2px rgba(255, 255, 255, 0.1)' : 'none',
         transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-        background: '#000', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: isTransparent && isVideoReady ? 'transparent' : '#000000',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
       {/* Botão de Fechar Mini-Player Flutuante */}
@@ -339,18 +352,66 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
         </button>
       )}
 
+      {/* Indicador suave de carregamento nos primeiros segundos até o primeiro frame estar pronto */}
+      {!isVideoReady && (
+        <div
+          data-testid="embed-buffering-overlay"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: '#000000',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              width: '36px',
+              height: '36px',
+              border: '3px solid rgba(255, 255, 255, 0.12)',
+              borderTopColor: primaryColor,
+              borderRadius: '50%',
+              animation: 'spin 0.75s linear infinite',
+            }}
+          />
+        </div>
+      )}
+
       <video
         ref={videoRef}
         src={getMediaUrl(video.video_url)}
         poster={getMediaUrl(video.thumbnail_url)}
         controls={false}
         controlsList={antiDownloadActive ? 'nodownload' : undefined}
+        preload="auto"
+        onLoadedData={() => {
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+            requestAnimationFrame(() => setIsVideoReady(true))
+          }
+        }}
+        onCanPlay={() => {
+          if (videoRef.current && videoRef.current.readyState >= 3) {
+            setIsVideoReady(true)
+          }
+        }}
+        onPlaying={() => {
+          requestAnimationFrame(() => setIsVideoReady(true))
+        }}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onClick={handleTogglePlay}
-        style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: video.player_settings?.fit_mode || 'contain',
+          cursor: 'pointer',
+          backgroundColor: isTransparent && isVideoReady ? 'transparent' : '#000000',
+        }}
         playsInline
       />
 
@@ -371,8 +432,8 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
             duration={duration || video.duration || 60}
             currentSpeed={currentSpeed}
             primaryColor={primaryColor}
-            controlsConfig={video.player_settings?.controls_config}
-            chapters={video.player_settings?.chapters}
+            controlsConfig={video.player_settings?.controls_config || undefined}
+            chapters={video.player_settings?.chapters || undefined}
             onTogglePlay={handleTogglePlay}
             onToggleMute={handleToggleMute}
             onVolumeChange={handleVolumeChange}

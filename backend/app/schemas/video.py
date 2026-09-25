@@ -91,6 +91,9 @@ class PlayerSettings(BaseModel):
     domain_protection: Optional[DomainProtectionSettings] = None
     controls_config: Optional[PlayerControlsConfig] = None
     chapters: Optional[ChaptersSettings] = None
+    transparent_background: Optional[bool] = False
+    remove_black_bars: Optional[bool] = True
+    fit_mode: Optional[str] = "cover"
 
 
 

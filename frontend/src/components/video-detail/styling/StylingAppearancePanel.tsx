@@ -10,6 +10,8 @@ interface StylingAppearancePanelProps {
   setPlaySize: (val: 'small' | 'medium' | 'large') => void
   aspectRatio: '16:9' | '9:16'
   setAspectRatio: (val: '16:9' | '9:16') => void
+  transparentBg?: boolean
+  setTransparentBg?: (val: boolean) => void
 }
 
 export const StylingAppearancePanel: React.FC<StylingAppearancePanelProps> = ({
@@ -21,6 +23,8 @@ export const StylingAppearancePanel: React.FC<StylingAppearancePanelProps> = ({
   setPlaySize,
   aspectRatio,
   setAspectRatio,
+  transparentBg,
+  setTransparentBg,
 }) => {
   const presetColors = [
     '#6366f1',

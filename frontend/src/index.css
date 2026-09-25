@@ -37,3 +37,17 @@ body.embed-mode,
   overflow: hidden;
 }
 
+/* Modo Embed Transparente (Apenas o Vídeo / Sem barras pretas) */
+html.embed-mode.transparent-bg,
+html.embed-mode.transparent-bg body,
+body.embed-mode.transparent-bg,
+.embed-mode.transparent-bg #root {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+

@@ -156,6 +156,7 @@ export const VideoDetailView: React.FC<VideoDetailViewProps> = ({
           {activeTab === 'embed' && (
             <VideoEmbedTab
               video={video}
+              onSave={onUpdateVideo}
               showToast={showToast}
             />
           )}

@@ -92,6 +92,9 @@ export interface PlayerSettings {
   domain_protection?: DomainProtectionSettings
   controls_config?: PlayerControlsConfig
   chapters?: ChaptersSettings
+  transparent_background?: boolean
+  remove_black_bars?: boolean
+  fit_mode?: 'cover' | 'contain'
 }
 
 

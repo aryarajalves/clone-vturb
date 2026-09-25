@@ -47,13 +47,14 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   onToggleFullscreen,
   onSeek,
 }) => {
-  const progressBar = controlsConfig.progress_bar ?? true
-  const videoTime = controlsConfig.video_time ?? true
-  const rewind10s = controlsConfig.rewind_10s ?? true
-  const forward10s = controlsConfig.forward_10s ?? true
-  const volume = controlsConfig.volume ?? true
-  const fullscreen = controlsConfig.fullscreen ?? true
-  const speedControl = controlsConfig.speed_control ?? true
+  const cfg = controlsConfig || {}
+  const progressBar = cfg.progress_bar ?? true
+  const videoTime = cfg.video_time ?? true
+  const rewind10s = cfg.rewind_10s ?? true
+  const forward10s = cfg.forward_10s ?? true
+  const volume = cfg.volume ?? true
+  const fullscreen = cfg.fullscreen ?? true
+  const speedControl = cfg.speed_control ?? true
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60)
