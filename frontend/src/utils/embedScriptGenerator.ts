@@ -126,7 +126,7 @@ export function generateEmbedCode({
 
     window.updateFloatingState = function() {
       if (!wrapper || !ifr) return;
-      var shouldFloat = isFloatingConfig && !isFloatingDismissed && !isIntersecting && isVideoPlaying;
+      var shouldFloat = isFloatingConfig && !isFloatingDismissed && !isIntersecting;
       if (shouldFloat) {
         var isVertical = '${video.player_settings?.aspect_ratio || '16:9'}' === '9:16';
         var floatHeight = isVertical ? Math.round(floatingWidth * 16 / 9) : Math.round(floatingWidth * 9 / 16);
