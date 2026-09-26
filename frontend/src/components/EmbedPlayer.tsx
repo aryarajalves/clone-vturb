@@ -208,6 +208,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
             primaryColor={primaryColor}
             controlsConfig={video.player_settings?.controls_config || undefined}
             chapters={video.player_settings?.chapters || undefined}
+            smartProgress={video.player_settings?.smart_progress || undefined}
             onTogglePlay={handleTogglePlay}
             onToggleMute={handleToggleMute}
             onVolumeChange={handleVolumeChange}

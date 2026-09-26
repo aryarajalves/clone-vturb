@@ -7,13 +7,14 @@ import {
   Maximize,
 } from 'lucide-react'
 import { VolumeControl } from '../../VolumeControl'
-import type { ChaptersSettings } from '../../../types/video'
+import type { ChaptersSettings, SmartProgressSettings } from '../../../types/video'
 import { StylingProgressBar } from './StylingProgressBar'
 import { formatTime } from './stylingPreviewHelpers'
 
 interface StylingPlayerControlsBarProps {
   progressBar?: boolean
   chapters?: ChaptersSettings
+  smartProgress?: SmartProgressSettings
   duration: number
   currentTime: number
   primaryColor: string
@@ -41,6 +42,7 @@ interface StylingPlayerControlsBarProps {
 export const StylingPlayerControlsBar: React.FC<StylingPlayerControlsBarProps> = ({
   progressBar = true,
   chapters,
+  smartProgress,
   duration,
   currentTime,
   primaryColor,
@@ -83,6 +85,7 @@ export const StylingPlayerControlsBar: React.FC<StylingPlayerControlsBarProps> =
       <StylingProgressBar
         progressBar={progressBar}
         chapters={chapters}
+        smartProgress={smartProgress}
         duration={duration}
         currentTime={currentTime}
         primaryColor={primaryColor}

@@ -1,5 +1,7 @@
 import React from 'react'
-import type { ChaptersSettings } from '../../../types/video'
+import type { ChaptersSettings, SmartProgressSettings } from '../../../types/video'
+import { SmartProgressBar, SmartChaptersBar } from '../../SmartProgressBar'
+import { resolveSmartProgress } from '../../../utils/smartProgress'
 
 interface StylingProgressBarProps {
   progressBar?: boolean
@@ -7,6 +9,7 @@ interface StylingProgressBarProps {
   duration: number
   currentTime: number
   primaryColor: string
+  smartProgress?: SmartProgressSettings
   onSeek: (e: React.ChangeEvent<HTMLInputElement>) => void
   onChapterClick: (start: number) => void
 }
@@ -17,10 +20,34 @@ export const StylingProgressBar: React.FC<StylingProgressBarProps> = ({
   duration,
   currentTime,
   primaryColor,
+  smartProgress,
   onSeek,
   onChapterClick,
 }) => {
   if (!progressBar) return null
+
+  const smartCfg = resolveSmartProgress(smartProgress)
+  if (smartCfg.enabled) {
+    return chapters?.enabled && chapters.items.length >= 2 ? (
+      <SmartChaptersBar
+        testId="styling-chapters-progress-bar"
+        segmentTestIdPrefix="chapter-segment-"
+        items={chapters.items}
+        currentTime={currentTime}
+        duration={duration}
+        settings={smartCfg}
+        primaryColor={primaryColor}
+      />
+    ) : (
+      <SmartProgressBar
+        testId="smart-progress-bar"
+        currentTime={currentTime}
+        duration={duration}
+        settings={smartCfg}
+        primaryColor={primaryColor}
+      />
+    )
+  }
 
   if (chapters?.enabled && chapters.items.length >= 2) {
     const sortedChapters = [...chapters.items].sort((a, b) => a.seconds - b.seconds)

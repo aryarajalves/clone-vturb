@@ -23,6 +23,7 @@ const mockVideo: Video = {
     playback_rate: 1.25,
     controls_config: { progress_bar: true, video_time: false },
     chapters: { enabled: true, items: [{ id: 'c1', time: '00:00', seconds: 0, title: 'Início' }] },
+    smart_progress: { enabled: true, intensity: 'forte' },
   },
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -33,7 +34,7 @@ describe('VideoSettingsTab - preservação das demais configurações do player'
     vi.clearAllMocks()
   })
 
-  it('ao salvar, mantém no payload as configurações de outras abas (turbo, controles, capítulos)', async () => {
+  it('ao salvar, mantém no payload as configurações de outras abas (turbo, controles, capítulos, progresso inteligente)', async () => {
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve({ ok: true, json: () => Promise.resolve(mockVideo) })
     )
@@ -55,6 +56,7 @@ describe('VideoSettingsTab - preservação das demais configurações do player'
         playback_rate: 1.25,
         controls_config: { progress_bar: true, video_time: false },
         chapters: mockVideo.player_settings.chapters,
+        smart_progress: { enabled: true, intensity: 'forte' },
         primary_color: '#6366f1',
       })
     )

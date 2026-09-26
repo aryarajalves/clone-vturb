@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Video, ChaptersSettings } from '../../../types/video'
+import type { Video, ChaptersSettings, SmartProgressSettings } from '../../../types/video'
 import { getMediaUrl } from '../../../services/api'
 import { StylingPreviewHeader } from './StylingPreviewHeader'
 import { StylingBigPlayButton } from './StylingBigPlayButton'
@@ -22,6 +22,7 @@ interface StylingVideoPreviewProps {
   aspectRatio?: '16:9' | '9:16'
   onAspectRatioChange?: (val: '16:9' | '9:16') => void
   chapters?: ChaptersSettings
+  smartProgress?: SmartProgressSettings
 }
 
 export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
@@ -40,6 +41,7 @@ export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
   aspectRatio = '16:9',
   onAspectRatioChange,
   chapters,
+  smartProgress,
 }) => {
   const {
     videoRef,
@@ -124,6 +126,7 @@ export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
         <StylingPlayerControlsBar
           progressBar={progressBar}
           chapters={chapters}
+          smartProgress={smartProgress}
           duration={duration}
           currentTime={currentTime}
           primaryColor={primaryColor}
