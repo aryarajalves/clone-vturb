@@ -10,6 +10,8 @@ import { VolumeControl } from '../../VolumeControl'
 import type { ChaptersSettings, SmartProgressSettings } from '../../../types/video'
 import { StylingProgressBar } from './StylingProgressBar'
 import { formatTime } from './stylingPreviewHelpers'
+import { SMART_STRIP_CONTROLS_OFFSET } from '../../SmartProgressBar'
+import { resolveSmartProgress } from '../../../utils/smartProgress'
 
 interface StylingPlayerControlsBarProps {
   progressBar?: boolean
@@ -76,6 +78,9 @@ export const StylingPlayerControlsBar: React.FC<StylingPlayerControlsBarProps> =
         right: 0,
         background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 65%, transparent 100%)',
         padding: '0.75rem 1rem',
+        ...(progressBar && resolveSmartProgress(smartProgress).enabled
+          ? { paddingBottom: SMART_STRIP_CONTROLS_OFFSET }
+          : {}),
         display: 'flex',
         flexDirection: 'column',
         gap: '0.45rem',

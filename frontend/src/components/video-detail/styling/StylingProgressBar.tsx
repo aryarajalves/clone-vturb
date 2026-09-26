@@ -1,6 +1,5 @@
 import React from 'react'
 import type { ChaptersSettings, SmartProgressSettings } from '../../../types/video'
-import { SmartProgressBar, SmartChaptersBar } from '../../SmartProgressBar'
 import { resolveSmartProgress } from '../../../utils/smartProgress'
 
 interface StylingProgressBarProps {
@@ -26,28 +25,8 @@ export const StylingProgressBar: React.FC<StylingProgressBarProps> = ({
 }) => {
   if (!progressBar) return null
 
-  const smartCfg = resolveSmartProgress(smartProgress)
-  if (smartCfg.enabled) {
-    return chapters?.enabled && chapters.items.length >= 2 ? (
-      <SmartChaptersBar
-        testId="styling-chapters-progress-bar"
-        segmentTestIdPrefix="chapter-segment-"
-        items={chapters.items}
-        currentTime={currentTime}
-        duration={duration}
-        settings={smartCfg}
-        primaryColor={primaryColor}
-      />
-    ) : (
-      <SmartProgressBar
-        testId="smart-progress-bar"
-        currentTime={currentTime}
-        duration={duration}
-        settings={smartCfg}
-        primaryColor={primaryColor}
-      />
-    )
-  }
+  // Progresso Inteligente: a faixa é desenhada pelo container da prévia (SmartProgressStrip)
+  if (resolveSmartProgress(smartProgress).enabled) return null
 
   if (chapters?.enabled && chapters.items.length >= 2) {
     const sortedChapters = [...chapters.items].sort((a, b) => a.seconds - b.seconds)

@@ -4,6 +4,7 @@ import { getMediaUrl } from '../../../services/api'
 import { StylingPreviewHeader } from './StylingPreviewHeader'
 import { StylingBigPlayButton } from './StylingBigPlayButton'
 import { StylingPlayerControlsBar } from './StylingPlayerControlsBar'
+import { SmartProgressStrip } from '../../SmartProgressBar'
 import { useStylingPreviewPlayer } from './useStylingPreviewPlayer'
 
 interface StylingVideoPreviewProps {
@@ -121,6 +122,16 @@ export const StylingVideoPreview: React.FC<StylingVideoPreviewProps> = ({
           playSize={playSize}
           primaryColor={primaryColor}
           onTogglePlay={togglePlay}
+        />
+
+        <SmartProgressStrip
+          idPrefix="styling"
+          currentTime={currentTime}
+          duration={duration}
+          settings={smartProgress}
+          primaryColor={primaryColor}
+          chapters={chapters}
+          progressBar={progressBar}
         />
 
         <StylingPlayerControlsBar

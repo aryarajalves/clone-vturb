@@ -5,6 +5,7 @@ import { SmartAutoplayOverlay } from './SmartAutoplayOverlay'
 import { BigPlayOverlay } from './BigPlayOverlay'
 import { DirectUnmuteBanner } from './DirectUnmuteBanner'
 import { CustomPlayerControls } from './CustomPlayerControls'
+import { SmartProgressStrip } from './SmartProgressBar'
 import { CtaButtonOverlay } from './CtaButtonOverlay'
 import { useDomainProtection } from '../hooks/useDomainProtection'
 import { EmbedLoadingState, EmbedErrorState, EmbedBlockedState } from './EmbedPlayerStates'
@@ -219,6 +220,19 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
             onSeek={handleSeek}
           />
         </div>
+      )}
+
+      {/* Progresso Inteligente: faixa na borda inferior, fora dos controles para ficar sempre visível */}
+      {!isSmartAutoplaying && (
+        <SmartProgressStrip
+          idPrefix="embed"
+          currentTime={currentTime}
+          duration={duration || video.duration || 60}
+          settings={video.player_settings?.smart_progress || undefined}
+          primaryColor={primaryColor}
+          chapters={video.player_settings?.chapters || undefined}
+          progressBar={video.player_settings?.controls_config?.progress_bar ?? true}
+        />
       )}
 
       {/* Smart Autoplay™ Overlay */}

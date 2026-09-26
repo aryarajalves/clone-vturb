@@ -37,38 +37,13 @@ function renderControls(opts: { currentTime: number; smartProgress?: SmartProgre
 }
 
 describe('Embed - Progresso Inteligente na barra do player', () => {
-  it('ligado, troca o range por uma barra só visual preenchida pela curva', () => {
-    renderControls({ currentTime: 50, smartProgress: { enabled: true, intensity: 'medio' } })
+  it('ligado, os controles não desenham barra (a faixa fica fora deles, no container do player)', () => {
+    renderControls({ currentTime: 50, smartProgress: { enabled: true, intensity: 'medio' }, chapters })
 
     expect(screen.queryByTestId('embed-progress-bar')).not.toBeInTheDocument()
-    const bar = screen.getByTestId('embed-smart-progress-bar')
-    expect(bar).toHaveAttribute('role', 'progressbar')
-    expect(bar).toHaveAttribute('aria-valuenow', '75')
-    expect(screen.getByTestId('embed-smart-progress-fill')).toHaveStyle({ width: '75%' })
-  })
-
-  it('ligado, clicar na barra não faz seek', () => {
-    const { onSeek } = renderControls({ currentTime: 20, smartProgress: { enabled: true, intensity: 'forte' } })
-    fireEvent.click(screen.getByTestId('embed-smart-progress-bar'))
-    expect(onSeek).not.toHaveBeenCalled()
-  })
-
-  it('ligado com capítulos, segmentos seguem a curva e não fazem seek ao clicar', () => {
-    const { onSeek } = renderControls({
-      currentTime: 25,
-      chapters,
-      smartProgress: { enabled: true, intensity: 'medio' },
-    })
-
-    const seg0 = screen.getByTestId('embed-chapter-segment-0')
-    const seg1 = screen.getByTestId('embed-chapter-segment-1')
-    // t=25s de 100s (médio): visual 43,75% da barra; 1º segmento ocupa 75% → 58,33% preenchido
-    const fill0 = parseFloat((seg0.firstChild as HTMLElement).style.width)
-    expect(fill0).toBeCloseTo((0.4375 / 0.75) * 100, 1)
-    expect((seg1.firstChild as HTMLElement).style.width).toBe('0%')
-
-    fireEvent.click(seg1)
-    expect(onSeek).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('embed-smart-progress-bar')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('embed-chapters-progress-bar')).not.toBeInTheDocument()
+    expect(screen.getByTestId('embed-control-play')).toBeInTheDocument()
   })
 
   it('desligado, mantém o range arrastável e os capítulos clicáveis como antes', () => {
@@ -84,7 +59,7 @@ describe('Embed - Progresso Inteligente na barra do player', () => {
     expect(onSeek).toHaveBeenCalledWith(50)
   })
 
-  it('EmbedPlayer repassa player_settings.smart_progress para a barra', async () => {
+  it('EmbedPlayer renderiza a faixa fora dos controles', async () => {
     const video: Video = {
       id: 'vid-embed-smart-progress',
       title: 'Embed com Progresso Inteligente',
@@ -113,8 +88,12 @@ describe('Embed - Progresso Inteligente na barra do player', () => {
     render(<EmbedPlayer videoId={video.id} />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('embed-smart-progress-bar')).toBeInTheDocument()
+      expect(screen.getByTestId('embed-smart-progress-strip')).toBeInTheDocument()
     })
+    expect(screen.getByTestId('embed-smart-progress-bar')).toBeInTheDocument()
     expect(screen.queryByTestId('embed-progress-bar')).not.toBeInTheDocument()
+    // Faixa sempre visível: não pode morar dentro dos controles, que somem com o mouse parado
+    const controls = screen.queryByTestId('embed-custom-controls')
+    if (controls) expect(controls).not.toContainElement(screen.getByTestId('embed-smart-progress-strip'))
   })
 })

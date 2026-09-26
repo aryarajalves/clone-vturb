@@ -13,46 +13,19 @@ const chapters: ChaptersSettings = {
 }
 
 describe('StylingProgressBar - Progresso Inteligente na prévia', () => {
-  it('ligado, mostra a barra só visual com o preenchimento da curva', () => {
-    const onSeek = vi.fn()
-    render(
+  it('ligado, não desenha barra nos controles (a faixa fica no container da prévia)', () => {
+    const { container } = render(
       <StylingProgressBar
+        chapters={chapters}
         duration={100}
         currentTime={50}
         primaryColor="#6366f1"
         smartProgress={{ enabled: true, intensity: 'forte' }}
-        onSeek={onSeek}
+        onSeek={vi.fn()}
         onChapterClick={vi.fn()}
       />
     )
-
-    expect(screen.queryByTestId('styling-progress-bar')).not.toBeInTheDocument()
-    const bar = screen.getByTestId('smart-progress-bar')
-    expect(bar).toHaveAttribute('aria-valuenow', '87.5')
-    fireEvent.click(bar)
-    expect(onSeek).not.toHaveBeenCalled()
-  })
-
-  it('ligado com capítulos, segmentos seguem a curva e não navegam ao clicar', () => {
-    const onChapterClick = vi.fn()
-    render(
-      <StylingProgressBar
-        chapters={chapters}
-        duration={100}
-        currentTime={25}
-        primaryColor="#6366f1"
-        smartProgress={{ enabled: true, intensity: 'medio' }}
-        onSeek={vi.fn()}
-        onChapterClick={onChapterClick}
-      />
-    )
-
-    const seg0 = screen.getByTestId('chapter-segment-0')
-    const fill0 = parseFloat((seg0.firstChild as HTMLElement).style.width)
-    expect(fill0).toBeCloseTo((0.4375 / 0.75) * 100, 1)
-
-    fireEvent.click(screen.getByTestId('chapter-segment-1'))
-    expect(onChapterClick).not.toHaveBeenCalled()
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('desligado, mantém range e capítulos clicáveis', () => {
@@ -121,6 +94,12 @@ describe('VideoStylingTab - painel do Progresso Inteligente', () => {
     expect(screen.getByTestId('smart-progress-intensity-forte')).toBeInTheDocument()
     expect(screen.getByTestId('smart-progress-bar')).toBeInTheDocument()
     expect(screen.queryByTestId('styling-progress-bar')).not.toBeInTheDocument()
+    expect(screen.getByTestId('styling-video-preview-container')).toContainElement(
+      screen.getByTestId('styling-smart-progress-strip')
+    )
+    expect(screen.getByTestId('styling-player-controls-bar')).not.toContainElement(
+      screen.getByTestId('smart-progress-bar')
+    )
 
     fireEvent.click(screen.getByTestId('toggle-smart-progress-switch'))
     expect(screen.queryByTestId('smart-progress-intensity-medio')).not.toBeInTheDocument()

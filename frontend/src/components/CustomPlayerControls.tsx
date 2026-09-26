@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { VolumeControl } from './VolumeControl'
 import type { ChaptersSettings, PlayerControlsConfig, SmartProgressSettings } from '../types/video'
-import { SmartProgressBar, SmartChaptersBar } from './SmartProgressBar'
+import { SMART_STRIP_CONTROLS_OFFSET } from './SmartProgressBar'
 import { resolveSmartProgress } from '../utils/smartProgress'
 
 interface CustomPlayerControlsProps {
@@ -67,7 +67,8 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
   }
 
   const hasChapters = chapters?.enabled && chapters.items && chapters.items.length >= 2
-  // Progresso Inteligente: barra só visual (sem seek), com a curva aplicada também aos capítulos
+  // Progresso Inteligente: a barra vira uma faixa na borda do player (SmartProgressStrip),
+  // renderizada fora dos controles; aqui só reservamos o espaço dela embaixo
   const smartCfg = resolveSmartProgress(smartProgress)
 
   return (
@@ -80,6 +81,7 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
         right: 0,
         background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 65%, transparent 100%)',
         padding: '0.5rem 0.65rem',
+        ...(smartCfg.enabled && progressBar ? { paddingBottom: SMART_STRIP_CONTROLS_OFFSET } : {}),
         display: 'flex',
         flexDirection: 'column',
         gap: '0.4rem',
@@ -89,28 +91,8 @@ export const CustomPlayerControls: React.FC<CustomPlayerControlsProps> = ({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Barra de Progresso (Segmentada por Capítulos se ativo, ou Contínua) */}
-      {progressBar && (
-        smartCfg.enabled ? (
-          hasChapters ? (
-            <SmartChaptersBar
-              testId="embed-chapters-progress-bar"
-              segmentTestIdPrefix="embed-chapter-segment-"
-              items={chapters!.items}
-              currentTime={currentTime}
-              duration={duration}
-              settings={smartCfg}
-              primaryColor={primaryColor}
-            />
-          ) : (
-            <SmartProgressBar
-              testId="embed-smart-progress-bar"
-              currentTime={currentTime}
-              duration={duration}
-              settings={smartCfg}
-              primaryColor={primaryColor}
-            />
-          )
-        ) : hasChapters ? (
+      {progressBar && !smartCfg.enabled && (
+        hasChapters ? (
           <div
             data-testid="embed-chapters-progress-bar"
             style={{
