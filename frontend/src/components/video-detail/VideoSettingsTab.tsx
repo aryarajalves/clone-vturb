@@ -80,6 +80,7 @@ export const VideoSettingsTab: React.FC<VideoSettingsTabProps> = ({ video, onSav
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl || undefined,
         player_settings: {
+          ...video.player_settings,
           primary_color: primaryColor,
           autoplay,
           show_controls: showControls,
