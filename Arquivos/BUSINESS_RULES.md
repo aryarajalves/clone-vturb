@@ -8,7 +8,13 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 - [x] Cada vídeo cadastrado possui título, URL do vídeo, capa e opções visuais.
 - [x] O upload inicial de vídeo aceita tanto arquivos locais (armazenados em static/uploads) quanto URLs diretas de CDN/S3/HLS, bem como upload de imagens para capas de thumbnail.
 - [x] A criação/upload de novos vídeos é realizada em uma visualização de tela cheia dedicada (`VideoCreateView`) com a mesma identidade visual e estrutura de cabeçalho do editor de vídeos (`VideoDetailView`), substituindo popups ou modais antigos. Ao confirmar a criação com sucesso, a interface transiciona diretamente para o painel de edição do vídeo criado.
-- [ ] [NOVO] Quais são as credenciais do Backblaze B2 (Key ID, Application Key, Bucket Name, Endpoint URL) ou se utilizaremos Cloudflare CDN como proxy de banda gratuita?
+- [x] **Upload direto para o storage (S3 compatível: Cloudflare R2, Backblaze B2)**:
+  - Com storage configurado (`STORAGE_*`, ou as antigas `BACKBLAZE_*`), o navegador envia o arquivo direto para o bucket com URLs assinadas pelo backend. O arquivo nunca passa pelo backend nem pelo proxy/tunnel (sem estouro de memória nem limite de 100 MB por requisição da Cloudflare).
+  - Vídeo: multipart em partes de 16 MB (4 em paralelo, 3 tentativas por parte, progresso real). Capa: PUT único. Limites: vídeo até `MAX_VIDEO_BYTES` (4 GB), imagem até `MAX_IMAGE_BYTES` (10 MB).
+  - Chaves: `videos/<uuid>/source.<ext>` e `thumbs/<uuid>.<ext>`. O vídeo guarda `storage_key`; a URL pública é derivada dela no servidor (`STORAGE_PUBLIC_URL`, domínio próprio do bucket servido pela CDN).
+  - Excluir um vídeo (simples ou em massa) ou trocar o arquivo apaga a pasta `videos/<uuid>/` e a capa do storage. Falha no storage só vira log; a exclusão no banco não é bloqueada.
+  - Sem storage configurado, o envio antigo pelo backend continua funcionando em dev (grava em `static/uploads`). Em produção é recusado (503) em vez de cair calado no disco.
+  - Configuração do bucket (R2): CORS com `AllowedOrigins`=[domínio do painel], `AllowedMethods`=[PUT, GET, HEAD], `ExposeHeaders`=[ETag] (sem o ETag o multipart falha); regra de lifecycle abortando multipart incompleto após 1 dia; domínio próprio (ex.: `video.seudominio.com`) com Cache Rule "Cache Everything".
 
 ---
 
@@ -105,13 +111,22 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 ## 7. Autenticação, Super Admin e Segurança de Acesso
 - [x] **Conta Super Admin Automática via Variáveis de Ambiente**:
   - As credenciais do administrador mestre são parametrizadas no `.env` (`SUPER_ADMIN_EMAIL` e `SUPER_ADMIN_PASSWORD`).
-  - Durante o boot do backend (lifespan), o sistema verifica e cria a conta no banco de dados se não existir, ou sincroniza a senha caso a variável seja alterada.
+  - No boot do container (`python -m app.bootstrap`, uma vez antes dos workers do uvicorn), o sistema verifica e cria a conta no banco de dados se não existir, ou sincroniza a senha caso a variável seja alterada.
   - Não pode haver mais de um Super Admin. Apenas administradores comuns (`admin`) e usuários (`user`) podem ser criados.
 - [x] **Criptografia Memory-Hard contra Força Bruta (Argon2id)**:
   - Todas as senhas de usuários são criptografadas com o algoritmo vencedor do Password Hashing Competition: **Argon2id** (via `argon2-cffi`).
   - Parâmetros de proteção estritos: custo de memória de 64 MB (`memory_cost=65536`), 3 iterações (`time_cost=3`) e 4 threads de paralelismo (`parallelism=4`).
 - [x] **Proteção de Rotas com Tokens JWT**:
   - Todos os endpoints administrativos do dashboard exigem cabeçalho `Authorization: Bearer <token>`. Duração padrão de 24 horas (`JWT_ACCESS_TOKEN_EXPIRE_HOURS=24h`).
+- [x] **Travas de Produção (`ENVIRONMENT=production`)**:
+  - O backend se recusa a subir se `JWT_SECRET_KEY` estiver no valor padrão ou tiver menos de 32 caracteres, se `SUPER_ADMIN_PASSWORD` estiver vazia ou no padrão, ou se `CORS_ORIGINS` não listar o domínio do painel.
+  - `/docs`, `/redoc` e `/openapi.json` ficam desligados.
+  - CORS libera só as origens de `CORS_ORIGINS`, sem credentials (a autenticação é por header, não por cookie).
+  - Token via `?token=` só é aceito no download de backup (link aberto pelo navegador); nas demais rotas, só o header.
+  - Rate limit por IP (`CF-Connecting-IP`): login 10/min, envio de código 5/min, cadastro por convite e redefinição de senha 10/min, eventos do player 120/min. Contador em memória por worker (limite aproximado).
+  - Upload aceita só vídeo (MP4, WebM, MOV, M4V) e imagem (PNG, JPG, WebP, GIF) com MIME coerente com a extensão; SVG é recusado (risco de XSS).
+  - Erros internos de backup não são devolvidos ao cliente, só ao log.
+  - O container de produção roda com usuário sem privilégios e só confia em `X-Forwarded-*` vindos de redes privadas.
 - [x] **Interface de Login e Topbar**:
   - Layout dividido em 2 colunas: formulário à esquerda e showcase à direita.
   - Topbar inclui o e-mail do usuário logado, badge de perfil e botão "Sair".
