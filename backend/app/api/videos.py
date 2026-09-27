@@ -6,24 +6,39 @@ from typing import List, Optional
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, UploadFile, File, Query
+from fastapi.concurrency import run_in_threadpool
+from fastapi.encoders import jsonable_encoder
+from pydantic import ValidationError
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 BRT_TZ = ZoneInfo("America/Sao_Paulo")
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.core.database import get_db
-from app.models.video import Video, VideoAnalytics
+from app.core.database import SessionLocal, get_db
+from app.models.video import BURST_DEDUP_EVENT_TYPES, BURST_DEDUP_SECONDS, Video, VideoAnalytics, VideoWatchSession
 from app.models.user import User
 from app.api.deps import get_current_user
 from app.core.rate_limit import rate_limit
 from app.services.storage import StorageNotConfigured, storage_service
+from app.services.watch_ranges import merge_ranges, watched_seconds
+from app.services.metrics_query import (
+    cta_reach_from_curve,
+    cta_reach_from_events,
+    downsample_curve,
+    event_totals,
+    plays_by_video,
+    retention_totals,
+    unique_totals,
+)
 from app.schemas.video import (
     VideoCreate,
     VideoUpdate,
     VideoResponse,
     AnalyticsEventCreate,
+    WatchRangesPayload,
     VideoMetricsResponse,
     HourlyMetric,
     PeakHour,
@@ -57,22 +72,11 @@ def cleanup_storage(storage_key: Optional[str] = None, thumbnail_url: Optional[s
 
 
 def get_plays_count_map(db: Session) -> dict:
-    rows = (
-        db.query(VideoAnalytics.video_id, func.count(VideoAnalytics.id))
-        .filter(VideoAnalytics.event_type == "play")
-        .group_by(VideoAnalytics.video_id)
-        .all()
-    )
-    return {row[0]: row[1] for row in rows}
+    return plays_by_video(db)
 
 
 def get_single_plays_count(db: Session, video_id: str) -> int:
-    return (
-        db.query(func.count(VideoAnalytics.id))
-        .filter(VideoAnalytics.video_id == video_id, VideoAnalytics.event_type == "play")
-        .scalar()
-        or 0
-    )
+    return plays_by_video(db, [video_id]).get(video_id, 0)
 
 
 @router.get("/", response_model=List[VideoResponse])
@@ -281,36 +285,94 @@ def delete_video(
     dependencies=[Depends(rate_limit("events", 120))],
 )
 def track_event(video_id: str, event: AnalyticsEventCreate, db: Session = Depends(get_db)):
-    video = db.query(Video).filter(Video.id == video_id).first()
-    if not video:
+    if not db.query(Video.id).filter(Video.id == video_id).first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
 
-    # Prevenção de duplicação por disparo simultâneo ou StrictMode da mesma sessão (debounce de 1s para play)
-    if event.session_id and event.event_type == "play":
-        recent_cutoff = datetime.now(timezone.utc) - timedelta(seconds=1)
-        existing = (
-            db.query(VideoAnalytics)
+    # Disparo repetido em rajada (StrictMode, autoplay + clique) da mesma sessão é
+    # ignorado. Recarregar a página depois conta de novo: total != únicos.
+    if event.session_id and event.event_type in BURST_DEDUP_EVENT_TYPES:
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=BURST_DEDUP_SECONDS)
+        duplicate = (
+            db.query(VideoAnalytics.id)
             .filter(
                 VideoAnalytics.video_id == video_id,
+                VideoAnalytics.event_type == event.event_type,
+                VideoAnalytics.created_at >= cutoff,
                 VideoAnalytics.session_id == event.session_id,
-                VideoAnalytics.event_type == "play",
-                VideoAnalytics.created_at >= recent_cutoff,
             )
             .first()
         )
-        if existing:
+        if duplicate:
             return {"status": "ignored_duplicate", "event": event.event_type}
 
-    record = VideoAnalytics(
+    db.add(VideoAnalytics(
         video_id=video_id,
         event_type=event.event_type,
         watch_time_seconds=event.watch_time_seconds or 0.0,
         session_id=event.session_id,
-        referer=event.referer
-    )
-    db.add(record)
+        referer=event.referer[:512] if event.referer else None,
+    ))
     db.commit()
     return {"status": "ok", "event": event.event_type}
+
+
+MAX_WATCH_BODY_BYTES = 64 * 1024
+
+
+@router.post(
+    "/{video_id}/watch",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit("watch", 60))],
+)
+async def track_watch_ranges(video_id: str, request: Request):
+    """Trechos assistidos da sessão (base da curva de retenção).
+
+    Aceita o corpo como texto: o player envia por navigator.sendBeacon com
+    text/plain, que não dispara preflight de CORS e sobrevive ao fechar a aba.
+    """
+    raw = await request.body()
+    if len(raw) > MAX_WATCH_BODY_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Payload grande demais.")
+    try:
+        payload = WatchRangesPayload.model_validate_json(raw)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=jsonable_encoder(exc.errors(include_url=False, include_context=False)))
+
+    found = await run_in_threadpool(_store_watch_ranges, video_id, payload)
+    if not found:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _store_watch_ranges(video_id: str, payload: WatchRangesPayload) -> bool:
+    db = SessionLocal()
+    try:
+        video = db.query(Video).filter(Video.id == video_id).first()
+        if not video:
+            return False
+        # Vídeo sem duração cadastrada (URL externa, upload antes do processamento):
+        # usa a duração que o navegador leu do arquivo
+        if not video.duration and payload.duration > 0:
+            video.duration = payload.duration
+        today = datetime.now(timezone.utc).date()
+        key = {"video_id": video_id, "session_id": payload.session_id, "event_date": today}
+        db.execute(
+            pg_insert(VideoWatchSession)
+            .values(**key, ranges=[], watched_seconds=0.0, duration=payload.duration, updated_at=datetime.now(timezone.utc))
+            .on_conflict_do_nothing(index_elements=["video_id", "session_id", "event_date"])
+        )
+        # Trava a linha: dois beacons da mesma sessão não perdem trechos um do outro
+        row = db.query(VideoWatchSession).filter_by(**key).with_for_update().one()
+        duration = max(row.duration or 0.0, payload.duration)
+        merged = merge_ranges(row.ranges or [], payload.ranges, duration)
+        row.ranges = merged
+        row.watched_seconds = watched_seconds(merged)
+        row.duration = duration
+        row.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        return True
+    finally:
+        db.close()
 
 
 @router.get("/{video_id}/metrics", response_model=VideoMetricsResponse)
@@ -381,96 +443,26 @@ def get_video_metrics(
     else:
         period = "all"
 
-    base_query = db.query(VideoAnalytics).filter(VideoAnalytics.video_id == video_id)
-    if start_dt:
-        base_query = base_query.filter(VideoAnalytics.created_at >= start_dt)
-    if end_dt:
-        base_query = base_query.filter(VideoAnalytics.created_at <= end_dt)
-
-    impressions = base_query.filter(VideoAnalytics.event_type == "impression").count()
-    unique_impressions = (
-        base_query.filter(
-            VideoAnalytics.event_type == "impression",
-            VideoAnalytics.session_id.isnot(None),
-        )
-        .with_entities(func.count(func.distinct(VideoAnalytics.session_id)))
-        .scalar()
-        or 0
-    )
-
-    plays = base_query.filter(VideoAnalytics.event_type == "play").count()
-    unique_plays = (
-        base_query.filter(
-            VideoAnalytics.event_type == "play",
-            VideoAnalytics.session_id.isnot(None),
-        )
-        .with_entities(func.count(func.distinct(VideoAnalytics.session_id)))
-        .scalar()
-        or 0
-    )
-
-    clicks = base_query.filter(VideoAnalytics.event_type == "click").count()
-
-    play_sessions_subq = (
-        base_query.filter(
-            VideoAnalytics.event_type == "play",
-            VideoAnalytics.session_id.isnot(None),
-        )
-        .with_entities(VideoAnalytics.session_id)
-        .distinct()
-    )
-
-    def _count_unique_sessions(q) -> int:
-        scoped_q = q
-        if unique_plays > 0:
-            scoped_q = scoped_q.filter(VideoAnalytics.session_id.in_(play_sessions_subq))
-        with_sid = (
-            scoped_q.filter(VideoAnalytics.session_id.isnot(None))
-            .with_entities(func.count(func.distinct(VideoAnalytics.session_id)))
-            .scalar()
-            or 0
-        )
-        without_sid = (
-            0
-            if unique_plays > 0
-            else q.filter(VideoAnalytics.session_id.is_(None)).count()
-        )
-        return int(with_sid + without_sid)
-
-    prog_25 = _count_unique_sessions(base_query.filter(VideoAnalytics.event_type == "progress_25"))
-    prog_50 = _count_unique_sessions(base_query.filter(VideoAnalytics.event_type == "progress_50"))
-    prog_75 = _count_unique_sessions(base_query.filter(VideoAnalytics.event_type == "progress_75"))
-    prog_100 = _count_unique_sessions(base_query.filter(VideoAnalytics.event_type == "progress_100"))
-
-    avg_watch_time = (
-        base_query.filter(VideoAnalytics.watch_time_seconds > 0)
-        .with_entities(func.avg(VideoAnalytics.watch_time_seconds))
-        .scalar()
-        or 0.0
-    )
+    # Consolidado (rollup) até a watermark + eventos brutos depois dela: sempre em dia.
+    # Únicos = pessoas distintas por dia, somadas no período. Marcos (25-100%) contam
+    # pessoas únicas que deram play (o autoplay mudo atrás da capa não conta).
+    events = event_totals(db, video_id, start_dt, end_dt, BRT_TZ)
+    totals = events.totals
+    impressions = totals["impression"]
+    plays = totals["play"]
+    uniques = unique_totals(db, video_id, start_dt, end_dt)
+    unique_impressions, unique_plays = uniques["unique_impressions"], uniques["unique_plays"]
+    clicks = totals["click"]
+    watch = retention_totals(db, video_id, start_dt, end_dt)
+    avg_watch_time = (watch.watch_seconds / watch.sessions) if watch.sessions else 0.0
 
     play_rate = round((plays / impressions * 100), 2) if impressions > 0 else 0.0
     ctr = round((clicks / plays * 100), 2) if plays > 0 else 0.0
 
-    # Distribuição Horária no Fuso Horário Oficial de Brasília (00h às 23h BRT)
-    hourly_data = {h: {"impressions": 0, "plays": 0, "clicks": 0} for h in range(24)}
-    events_created_list = base_query.with_entities(
-        VideoAnalytics.created_at, VideoAnalytics.event_type
-    ).all()
-
-    for ev_dt, ev_type in events_created_list:
-        if ev_dt:
-            # Garante que o timestamp UTC do banco seja convertido com precisão para o fuso de Brasília (BRT)
-            if ev_dt.tzinfo is None:
-                ev_dt = ev_dt.replace(tzinfo=timezone.utc)
-            ev_brt = ev_dt.astimezone(BRT_TZ)
-            h = ev_brt.hour
-            if ev_type == "impression":
-                hourly_data[h]["impressions"] += 1
-            elif ev_type == "play":
-                hourly_data[h]["plays"] += 1
-            elif ev_type == "click":
-                hourly_data[h]["clicks"] += 1
+    hourly_data = {
+        h: {"impressions": events.by_hour[h]["impression"], "plays": events.by_hour[h]["play"], "clicks": events.by_hour[h]["click"]}
+        for h in range(24)
+    }
 
     hourly_distribution: List[HourlyMetric] = []
     max_activity = -1
@@ -508,57 +500,23 @@ def get_video_metrics(
     start_date_iso = start_dt.astimezone(BRT_TZ).isoformat() if start_dt else None
     end_date_iso = end_dt.astimezone(BRT_TZ).isoformat() if end_dt else None
 
-    # Métrica da Oferta (CTA / Pitch) configurada no vídeo (sempre por pessoa única / session_id)
+    # Alcance da oferta (CTA / pitch) por pessoa única: pela curva por segundo quando o
+    # player manda trechos assistidos; senão, pelos eventos (players antigos).
     cta_metric: Optional[CtaMetric] = None
-    cta_time_sec = 0
-    if video.player_settings:
-        cta_time_sec = int(video.player_settings.get("cta_time") or 0)
-        if cta_time_sec <= 0 and isinstance(video.player_settings.get("pitch_delay"), dict):
-            cta_time_sec = int(video.player_settings.get("pitch_delay", {}).get("time") or 0)
+    settings_ = video.player_settings or {}
+    cta_time_sec = int(settings_.get("cta_time") or 0)
+    if cta_time_sec <= 0 and isinstance(settings_.get("pitch_delay"), dict):
+        cta_time_sec = int(settings_["pitch_delay"].get("time") or 0)
 
     if cta_time_sec > 0:
-        mins = cta_time_sec // 60
-        secs = cta_time_sec % 60
-        fmt = f"{mins:02d}:{secs:02d}"
-
-        eligible_events = ["cta_reached", "pitch_reached"]
-        dur = video.duration or 0.0
-        if dur > 0:
-            if dur * 0.25 >= cta_time_sec:
-                eligible_events.append("progress_25")
-            if dur * 0.50 >= cta_time_sec:
-                eligible_events.append("progress_50")
-            if dur * 0.75 >= cta_time_sec:
-                eligible_events.append("progress_75")
-            if dur >= cta_time_sec:
-                eligible_events.append("progress_100")
-
-        # Conta APENAS pessoas únicas (distinct session_id) que atingiram o tempo da oferta
-        audience_reached = _count_unique_sessions(
-            base_query.filter(
-                (VideoAnalytics.watch_time_seconds >= cta_time_sec)
-                | (
-                    VideoAnalytics.event_type.in_(eligible_events)
-                    & (
-                        (VideoAnalytics.watch_time_seconds >= cta_time_sec)
-                        | (VideoAnalytics.watch_time_seconds == 0)
-                        | (VideoAnalytics.watch_time_seconds.is_(None))
-                    )
-                )
-            )
+        reach = cta_reach_from_curve(watch.counts, watch.sessions, cta_time_sec) or cta_reach_from_events(
+            db, video_id, start_dt, end_dt, cta_time_sec, video.duration or 0.0, unique_plays, plays
         )
-        aud_base = unique_plays if unique_plays > 0 else plays
-        ret_pct = (
-            min(100.0, round((audience_reached / aud_base * 100.0), 2))
-            if aud_base > 0
-            else 0.0
-        )
-
         cta_metric = CtaMetric(
             cta_time_seconds=cta_time_sec,
-            cta_time_formatted=fmt,
-            audience_reached=audience_reached,
-            retention_percent=ret_pct,
+            cta_time_formatted=f"{cta_time_sec // 60:02d}:{cta_time_sec % 60:02d}",
+            audience_reached=reach.audience_reached,
+            retention_percent=reach.retention_percent,
         )
 
     return VideoMetricsResponse(
@@ -576,12 +534,13 @@ def get_video_metrics(
         ctr=ctr,
         avg_watch_time_seconds=round(float(avg_watch_time), 2),
         retention={
-            "25%": prog_25,
-            "50%": prog_50,
-            "75%": prog_75,
-            "100%": prog_100,
+            "25%": uniques["unique_p25"],
+            "50%": uniques["unique_p50"],
+            "75%": uniques["unique_p75"],
+            "100%": uniques["unique_p100"],
         },
         hourly_distribution=hourly_distribution,
         peak_hour=peak_hour,
+        retention_curve=downsample_curve(watch.counts, watch.sessions),
         cta_metric=cta_metric,
     )
