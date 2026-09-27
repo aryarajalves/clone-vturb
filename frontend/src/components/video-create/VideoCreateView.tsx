@@ -32,6 +32,7 @@ export const VideoCreateView: React.FC<VideoCreateViewProps> = ({
 
   const [primaryColor, setPrimaryColor] = useState('#6366f1')
   const [autoplay, setAutoplay] = useState(false)
+  const [duration, setDuration] = useState<number>(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,6 +67,20 @@ export const VideoCreateView: React.FC<VideoCreateViewProps> = ({
       setVideoProgress(100)
       setVideoUrl(res.url)
       setVideoFileName(file.name)
+
+      // Detecta a duração real do arquivo de vídeo
+      try {
+        const tempVideo = document.createElement('video')
+        tempVideo.preload = 'metadata'
+        tempVideo.src = URL.createObjectURL(file)
+        tempVideo.onloadedmetadata = () => {
+          if (tempVideo.duration > 0 && !isNaN(tempVideo.duration)) {
+            setDuration(Math.round(tempVideo.duration))
+          }
+          URL.revokeObjectURL(tempVideo.src)
+        }
+      } catch {}
+
       showToast('Arquivo de vídeo carregado com sucesso!')
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer upload do vídeo.')
@@ -109,6 +124,7 @@ export const VideoCreateView: React.FC<VideoCreateViewProps> = ({
         title: title.trim(),
         video_url: videoUrl.trim(),
         thumbnail_url: thumbnailUrl.trim() || undefined,
+        duration: duration > 0 ? duration : undefined,
         player_settings: {
           primary_color: primaryColor,
           autoplay,
