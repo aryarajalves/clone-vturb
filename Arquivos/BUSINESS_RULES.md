@@ -8,7 +8,23 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 - [x] Cada vídeo cadastrado possui título, URL do vídeo, capa e opções visuais.
 - [x] O upload inicial de vídeo aceita tanto arquivos locais (armazenados em static/uploads) quanto URLs diretas de CDN/S3/HLS, bem como upload de imagens para capas de thumbnail.
 - [x] A criação/upload de novos vídeos é realizada em uma visualização de tela cheia dedicada (`VideoCreateView`) com a mesma identidade visual e estrutura de cabeçalho do editor de vídeos (`VideoDetailView`), substituindo popups ou modais antigos. Ao confirmar a criação com sucesso, a interface transiciona diretamente para o painel de edição do vídeo criado.
-- [ ] [NOVO] Quais são as credenciais do Backblaze B2 (Key ID, Application Key, Bucket Name, Endpoint URL) ou se utilizaremos Cloudflare CDN como proxy de banda gratuita?
+- [x] **Upload direto para o storage (S3 compatível: Cloudflare R2, Backblaze B2)**:
+  - Com storage configurado (`STORAGE_*`, ou as antigas `BACKBLAZE_*`), o navegador envia o arquivo direto para o bucket com URLs assinadas pelo backend. O arquivo nunca passa pelo backend nem pelo proxy/tunnel (sem estouro de memória nem limite de 100 MB por requisição da Cloudflare).
+  - Vídeo: multipart em partes de 16 MB (4 em paralelo, 3 tentativas por parte, progresso real). Capa: PUT único. Limites: vídeo até `MAX_VIDEO_BYTES` (4 GB), imagem até `MAX_IMAGE_BYTES` (10 MB).
+  - Chaves: `videos/<uuid>/source.<ext>` e `thumbs/<uuid>.<ext>`. O vídeo guarda `storage_key`; a URL pública é derivada dela no servidor (`STORAGE_PUBLIC_URL`, domínio próprio do bucket servido pela CDN).
+  - Excluir um vídeo (simples ou em massa) ou trocar o arquivo apaga a pasta `videos/<uuid>/` (original e HLS) e a capa do storage. Se o storage falhar, a limpeza vira job e o worker tenta de novo; a exclusão no banco não é bloqueada.
+  - Sem storage configurado, o envio antigo pelo backend continua funcionando em dev (grava em `static/uploads`). Em produção é recusado (503) em vez de cair calado no disco.
+  - Configuração do bucket (R2): CORS com `AllowedOrigins`=[domínio do painel], `AllowedMethods`=[PUT, GET, HEAD], `ExposeHeaders`=[ETag] (sem o ETag o multipart falha); regra de lifecycle abortando multipart incompleto após 1 dia; domínio próprio (ex.: `video.seudominio.com`) com Cache Rule "Cache Everything".
+- [x] **Streaming adaptativo (HLS)**, ligado por `HLS_ENABLED=true` na API e no worker (desligado por padrão: sem worker, o vídeo ficaria "processando"):
+  - Vídeo enviado para o storage entra em `processing` e ganha um job `transcode_hls` na fila do Postgres (tabela `jobs`, sem Redis). Enquanto processa, o player toca o MP4 original.
+  - O worker baixa o original para disco, lê com `ffprobe` e gera HLS em fMP4 com segmentos de 4s e keyframe a cada segmento. Escada: 360p/800k, 540p/1.4M, 720p/2.5M, 1080p/4.5M, sem upscale; fonte entre degraus ganha um degrau no tamanho original; vídeo vertical usa o lado menor.
+  - Saída em `videos/<uuid>/hls/<job_id>/` com `Cache-Control: public, max-age=31536000, immutable` (caminho versionado). Ao terminar, grava `hls_url`, `status=ready` e a duração real. Um HLS anterior do mesmo vídeo vai para a fila de limpeza (`delete_prefix`).
+  - Falha: até 3 tentativas com espera de 1 min e 5 min; depois `status=failed` com um motivo curto em `processing_error` (o detalhe fica no log e em `jobs.last_error`). O MP4 segue tocando. O painel mostra "Processando"/"Falhou" e permite reprocessar (`POST /videos/{id}/reprocess`, o HLS atual segue no ar até o novo ficar pronto).
+  - Vídeo apagado ou trocado durante o transcode: o resultado é descartado e apagado do storage. Trocar por URL externa zera o HLS.
+  - Worker parado (deploy/SIGTERM) devolve o job à fila sem gastar tentativa; worker morto sem aviso tem o job retomado por outro após 10 min sem heartbeat.
+  - Player: Safari/iOS (e Chrome recente) tocam HLS nativo; os demais carregam o hls.js (build light, versão fixa, import dinâmico só quando o vídeo tem HLS). Qualquer falha (sem MSE, erro ao carregar o hls.js, erro fatal de rede/mídia) volta para o MP4 no mesmo ponto. O autoplay espera a fonte ficar pronta.
+  - O hls.js baixa playlist e segmentos por XHR: o CORS do bucket precisa liberar GET para o domínio de onde o embed é servido (o painel).
+  - Recursos: o ffmpeg abre um encoder por qualidade (`HLS_THREADS` threads cada), então o teto de CPU é o limite do container do worker; pico medido de ~700 MiB num 1080p. O disco do worker precisa de ~2,5x o tamanho do maior original (original + saída temporária).
 
 ---
 
@@ -35,6 +51,15 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
   - Retenção Média de Tempo Assistido e Funil (25%, 50%, 75%, 100%)
   - Cliques no Player / CTA (CTR)
 - [x] Toda agregação respeita o identificador do vídeo.
+- [x] Os tipos de evento aceitos vêm de `contracts/analytics-events.json`, lido pelo backend e pelo frontend (teste de contrato nos dois lados). Evento fora da lista é recusado com 422.
+- [x] Deduplicação: só `play` repetido pela mesma sessão em menos de 1 segundo é descartado (duplo disparo do player). Impressões contam a cada carregamento; os totais contam tudo e os únicos são pessoas (sessões) distintas por dia, somadas no período.
+- [x] Marcos de 25/50/75/100% contam pessoas únicas por dia, só entre as que deram play no dia (quem ficou no autoplay mudo atrás da capa não conta). Dia sem nenhum play conta todas as pessoas do marco.
+- [x] Alcance da oferta (`cta_metric`): pessoas que assistiram o segundo configurado em `cta_time` (ou `pitch_delay.time`), lido da curva por segundo. Sem curva (players antigos), cai na contagem pelos eventos `cta_reached`/`pitch_reached`/marcos.
+- [x] Retenção por segundo: o player envia os trechos assistidos (segundos do vídeo, não do relógio) a cada 30s, ao esconder a aba e ao terminar, via `sendBeacon` (`POST /videos/{id}/watch`, `text/plain`). O backend une os trechos por sessão e dia, limita a 500 trechos e à duração do vídeo (teto de 4h) e preenche a duração do vídeo se ela estiver zerada.
+- [x] A curva de retenção é a fração de sessões que viram cada segundo; o tempo médio assistido é o total de segundos assistidos dividido pelas sessões.
+- [x] Consolidação: o container `worker` roda a cada `WORKER_MAINTENANCE_INTERVAL` (padrão 300s), com trava no Postgres para rodar uma instância por vez. Fecha horas encerradas (totais) e dias encerrados (únicos e curva). O painel soma o consolidado até a watermark com o bruto depois dela, então os números ficam ao vivo.
+- [x] Eventos brutos e trechos com mais de `RAW_RETENTION_DAYS` (padrão 90) são apagados, e só depois de consolidados.
+- [x] Dispositivo, país, sistema, navegador e origem ainda não são coletados: o painel diz isso em vez de mostrar números de exemplo.
 - [x] Filtros por data e período: suporte a Hoje (`today`), Ontem (`yesterday`), 7 Dias (`7d`), 30 Dias (`30d`), 1 Ano (`1y`), Todo o Período (`all`) e Intervalo Personalizado (De / Até).
 - [x] Gráfico estilo VTurb de distribuição horária (24 horas) com identificação automática do horário de pico de acessos/plays e consolidação por turnos (madrugada, manhã, tarde, noite).
 - [x] Gráfico Oficial VTurb de Retenção & Audiência: Gráfico com visual dark (#000000), imagem do vídeo centralizada na área gráfica com efeito de fusão, curva SVG verde neon suave, eixos Y (0% a 100%) e X com timestamps calculados pela duração real do vídeo (com auto-detecção e persistência automática de `duration` via metadados HTML5 quando o vídeo possui `duration <= 0`), linha vertical tracejada interativa (scrubber com ponto verde centralizado na linha via interpolação cúbica de Bézier exata por Newton-Raphson) e tooltip flutuante exibindo tempo/horário, audiência e retenção, além de sub-navegação por Dispositivos, Navegadores, Países e Origem do Tráfego.
@@ -79,7 +104,8 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
   - Painel escuro estilizado com controles: **Barra de progresso**, **Tempo do Vídeo** (indicando o tempo restante em contagem regressiva para acabar o vídeo), **Voltar 10s**, **Avançar 10s**, **Volume**, **Fullscreen** e **Controle de velocidade**.
   - **Marcadores de Capítulos (`chapters`)**: Divisão do vídeo em múltiplos capítulos nomeados com timestamps (ex: `00:00`, `00:50`), renderizando uma barra de progresso segmentada interativa com navegação direta por clique.
   - Configurações visuais adicionais: Paleta de cores de destaque com presets e seletor hexadecimal, formato do botão de play (Circular, Retangular, Quadrado, Minimalista) e tamanho do botão (Pequeno, Médio, Grande).
-  - Persistência das opções no objeto `player_settings` (`border_radius`, `aspect_ratio`, `controls_config` e `chapters`).
+  - **Progresso Inteligente (`smart_progress`)**: Barra de progresso que avança rápido no início e desacelera no final (curva `1 - (1 - t)^k`), fazendo o vídeo parecer mais curto. Switch de ativação e intensidade **Suave** (~65% da barra na metade do vídeo), **Médio** (75%) ou **Forte** (~88%). Com o recurso ligado, a barra vira uma faixa na borda inferior do player, de ponta a ponta e sem trilho (estilo VTurb), que continua visível quando os controles somem e fica apenas visual (sem arrastar e sem navegação por capítulos) e a curva também é aplicada aos segmentos de capítulos. O tempo real do vídeo, a contagem regressiva e a telemetria de retenção não são alterados.
+  - Persistência das opções no objeto `player_settings` (`border_radius`, `aspect_ratio`, `controls_config`, `chapters` e `smart_progress`).
 - [x] **Smart Autoplay™ & Autoplay Direto com Som**:
   - Permite escolher entre dois modos de inicialização automática ao ativar o recurso:
     1. **Smart Autoplay™ (Padrão)**: Inicia o vídeo de forma automática e mudo para contornar o bloqueio de autoplay dos navegadores modernos, exibindo uma chamada animada customizável para desmutar com 1 clique ("CLIQUE PARA OUVIR"), personalização de tamanhos (Mini, Pequeno, Médio, Grande), cores e opção de reiniciar o vídeo do início ao desmutar.
@@ -105,13 +131,22 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 ## 7. Autenticação, Super Admin e Segurança de Acesso
 - [x] **Conta Super Admin Automática via Variáveis de Ambiente**:
   - As credenciais do administrador mestre são parametrizadas no `.env` (`SUPER_ADMIN_EMAIL` e `SUPER_ADMIN_PASSWORD`).
-  - Durante o boot do backend (lifespan), o sistema verifica e cria a conta no banco de dados se não existir, ou sincroniza a senha caso a variável seja alterada.
+  - No boot do container (`python -m app.bootstrap`, uma vez antes dos workers do uvicorn), o sistema verifica e cria a conta no banco de dados se não existir, ou sincroniza a senha caso a variável seja alterada.
   - Não pode haver mais de um Super Admin. Apenas administradores comuns (`admin`) e usuários (`user`) podem ser criados.
 - [x] **Criptografia Memory-Hard contra Força Bruta (Argon2id)**:
   - Todas as senhas de usuários são criptografadas com o algoritmo vencedor do Password Hashing Competition: **Argon2id** (via `argon2-cffi`).
   - Parâmetros de proteção estritos: custo de memória de 64 MB (`memory_cost=65536`), 3 iterações (`time_cost=3`) e 4 threads de paralelismo (`parallelism=4`).
 - [x] **Proteção de Rotas com Tokens JWT**:
   - Todos os endpoints administrativos do dashboard exigem cabeçalho `Authorization: Bearer <token>`. Duração padrão de 24 horas (`JWT_ACCESS_TOKEN_EXPIRE_HOURS=24h`).
+- [x] **Travas de Produção (`ENVIRONMENT=production`)**:
+  - O backend se recusa a subir se `JWT_SECRET_KEY` estiver no valor padrão ou tiver menos de 32 caracteres, se `SUPER_ADMIN_PASSWORD` estiver vazia ou no padrão, ou se `CORS_ORIGINS` não listar o domínio do painel.
+  - `/docs`, `/redoc` e `/openapi.json` ficam desligados.
+  - CORS libera só as origens de `CORS_ORIGINS`, sem credentials (a autenticação é por header, não por cookie).
+  - Token via `?token=` só é aceito no download de backup (link aberto pelo navegador); nas demais rotas, só o header.
+  - Rate limit por IP (`CF-Connecting-IP`): login 10/min, envio de código 5/min, cadastro por convite e redefinição de senha 10/min, eventos do player 120/min. Contador em memória por worker (limite aproximado).
+  - Upload aceita só vídeo (MP4, WebM, MOV, M4V) e imagem (PNG, JPG, WebP, GIF) com MIME coerente com a extensão; SVG é recusado (risco de XSS).
+  - Erros internos de backup não são devolvidos ao cliente, só ao log.
+  - O container de produção roda com usuário sem privilégios e só confia em `X-Forwarded-*` vindos de redes privadas.
 - [x] **Interface de Login e Topbar**:
   - Layout dividido em 2 colunas: formulário à esquerda e showcase à direita.
   - Topbar inclui o e-mail do usuário logado, badge de perfil e botão "Sair".

@@ -1,6 +1,6 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Literal, get_args
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 class SmartAutoplaySettings(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -71,6 +71,11 @@ class ChaptersSettings(BaseModel):
     enabled: bool = False
     items: List[ChapterItem] = Field(default_factory=list)
 
+class SmartProgressSettings(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    enabled: bool = False
+    intensity: Literal["suave", "medio", "forte"] = "medio"  # curva da barra: anda rapido no inicio e desacelera no fim
+
 class PlayerSettings(BaseModel):
     model_config = ConfigDict(extra="allow")
     primary_color: str = "#6366f1"
@@ -91,18 +96,26 @@ class PlayerSettings(BaseModel):
     domain_protection: Optional[DomainProtectionSettings] = None
     controls_config: Optional[PlayerControlsConfig] = None
     chapters: Optional[ChaptersSettings] = None
+    smart_progress: Optional[SmartProgressSettings] = None
     transparent_background: Optional[bool] = False
     remove_black_bars: Optional[bool] = True
     fit_mode: Optional[str] = "cover"
 
 
 
+# Chave gerada por /uploads/init para o arquivo original do vídeo
+STORAGE_KEY_PATTERN = r"^videos/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/source\.(mp4|webm|mov|m4v)$"
+
+
 class VideoCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
+    # Com storage_key, a URL é derivada da chave no servidor e este valor é ignorado
     video_url: str = Field(..., min_length=1, max_length=1024)
     thumbnail_url: Optional[str] = Field(None, max_length=1024)
     duration: Optional[float] = 0.0
     player_settings: Optional[PlayerSettings] = None
+    storage_key: Optional[str] = Field(None, pattern=STORAGE_KEY_PATTERN)
+    source_size_bytes: Optional[int] = Field(None, ge=0)
 
 class VideoUpdate(BaseModel):
     title: Optional[str] = None
@@ -110,6 +123,8 @@ class VideoUpdate(BaseModel):
     thumbnail_url: Optional[str] = None
     duration: Optional[float] = None
     player_settings: Optional[PlayerSettings] = None
+    storage_key: Optional[str] = Field(None, pattern=STORAGE_KEY_PATTERN)
+    source_size_bytes: Optional[int] = Field(None, ge=0)
 
 class VideoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -121,14 +136,39 @@ class VideoResponse(BaseModel):
     duration: float
     plays_count: Optional[int] = 0
     player_settings: Dict[str, Any]
+    status: str = "ready"
+    hls_url: Optional[str] = None
+    processing_error: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
+# Contrato com o player: contracts/analytics-events.json (teste de contrato nos dois lados)
+EventType = Literal["impression", "play", "progress_25", "progress_50", "progress_75", "progress_100", "click", "cta_reached", "pitch_reached"]
+EVENT_TYPES: tuple[str, ...] = get_args(EventType)
+MAX_WATCH_SECONDS = 86400.0
+MAX_WATCH_RANGES = 500
+
+
 class AnalyticsEventCreate(BaseModel):
-    event_type: str = Field(..., description="impression, play, progress_25, progress_50, progress_75, progress_100, click")
-    watch_time_seconds: Optional[float] = 0.0
-    session_id: Optional[str] = None
+    event_type: EventType
+    watch_time_seconds: Optional[float] = Field(0.0, ge=0, le=MAX_WATCH_SECONDS)
+    session_id: Optional[str] = Field(None, max_length=100)
+    # Truncado (não recusado): document.referrer pode ser longo em LPs com UTMs
     referer: Optional[str] = None
+
+
+class WatchRangesPayload(BaseModel):
+    """Trechos assistidos enviados pelo player via sendBeacon (união acumulada da sessão)."""
+    session_id: str = Field(..., min_length=1, max_length=100)
+    duration: float = Field(..., ge=0, le=MAX_WATCH_SECONDS)
+    ranges: List[List[float]] = Field(..., max_length=MAX_WATCH_RANGES)
+
+    @field_validator("ranges")
+    @classmethod
+    def _pairs(cls, value: List[List[float]]) -> List[List[float]]:
+        if any(len(item) != 2 for item in value):
+            raise ValueError("Cada trecho deve ser [início, fim].")
+        return value
 
 class HourlyMetric(BaseModel):
     hour: int
@@ -143,6 +183,11 @@ class PeakHour(BaseModel):
     impressions: int
     plays: int
     total_activity: int
+
+class RetentionCurve(BaseModel):
+    bucket_seconds: int
+    sessions: int
+    values: List[float]
 
 class CtaMetric(BaseModel):
     cta_time_seconds: int
@@ -167,6 +212,8 @@ class VideoMetricsResponse(BaseModel):
     retention: Dict[str, int]
     hourly_distribution: List[HourlyMetric] = []
     peak_hour: Optional[PeakHour] = None
+    # Curva por segundo: fração das sessões que assistiu cada trecho de `bucket_seconds`
+    retention_curve: Optional["RetentionCurve"] = None
     cta_metric: Optional[CtaMetric] = None
 
 

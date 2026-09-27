@@ -5,6 +5,7 @@ import { SmartAutoplayOverlay } from './SmartAutoplayOverlay'
 import { BigPlayOverlay } from './BigPlayOverlay'
 import { DirectUnmuteBanner } from './DirectUnmuteBanner'
 import { CustomPlayerControls } from './CustomPlayerControls'
+import { SmartProgressStrip } from './SmartProgressBar'
 import { CtaButtonOverlay } from './CtaButtonOverlay'
 import { useDomainProtection } from '../hooks/useDomainProtection'
 import { EmbedLoadingState, EmbedErrorState, EmbedBlockedState } from './EmbedPlayerStates'
@@ -18,6 +19,7 @@ import {
   parseEmbedDimensions,
   computeEmbedContainerStyle,
 } from './embed'
+import { useHlsSource } from './embed/useHlsSource'
 
 interface EmbedPlayerProps {
   videoId: string
@@ -39,6 +41,11 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     video,
     videoRef,
     isTransparent,
+  })
+
+  const { ready: isSourceReady } = useHlsSource(videoRef, {
+    hlsUrl: video?.hls_url ? getMediaUrl(video.hls_url) : null,
+    mp4Url: video ? getMediaUrl(video.video_url) : '',
   })
 
   const {
@@ -79,6 +86,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
     containerRef,
     setIsVideoReady,
     isVideoReady,
+    isSourceReady,
   })
 
   const {
@@ -162,7 +170,8 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
 
       <video
         ref={videoRef}
-        src={getMediaUrl(video.video_url)}
+        // Com HLS, a fonte é ligada pelo useHlsSource (hls.js ou nativo); o MP4 fica de reserva
+        src={video.hls_url ? undefined : getMediaUrl(video.video_url)}
         poster={getMediaUrl(video.thumbnail_url)}
         controls={false}
         controlsList={antiDownloadActive ? 'nodownload' : undefined}
@@ -214,6 +223,7 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
             primaryColor={primaryColor}
             controlsConfig={video.player_settings?.controls_config || undefined}
             chapters={video.player_settings?.chapters || undefined}
+            smartProgress={video.player_settings?.smart_progress || undefined}
             onTogglePlay={handleTogglePlay}
             onToggleMute={handleToggleMute}
             onVolumeChange={handleVolumeChange}
@@ -224,6 +234,19 @@ export const EmbedPlayer: React.FC<EmbedPlayerProps> = ({ videoId }) => {
             onSeek={handleSeek}
           />
         </div>
+      )}
+
+      {/* Progresso Inteligente: faixa na borda inferior, fora dos controles para ficar sempre visível */}
+      {!isSmartAutoplaying && (
+        <SmartProgressStrip
+          idPrefix="embed"
+          currentTime={currentTime}
+          duration={duration || video.duration || 60}
+          settings={video.player_settings?.smart_progress || undefined}
+          primaryColor={primaryColor}
+          chapters={video.player_settings?.chapters || undefined}
+          progressBar={video.player_settings?.controls_config?.progress_bar ?? true}
+        />
       )}
 
       {/* Smart Autoplay™ Overlay */}

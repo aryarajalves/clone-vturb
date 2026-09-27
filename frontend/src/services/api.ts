@@ -1,4 +1,5 @@
 import type { Video, VideoMetrics, PlayerSettings } from '../types/video'
+import type { AnalyticsEventType, WatchRangesPayload } from '../types/analytics'
 import type {
   LoginResponse,
   User,
@@ -32,7 +33,7 @@ export function authHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` }
 }
 
-function handleAuthResponse(res: Response): void {
+export function handleAuthResponse(res: Response): void {
   if (res.status === 401) {
     removeAuthToken()
     if (typeof window !== 'undefined') {
@@ -93,6 +94,9 @@ export async function createVideo(data: {
   thumbnail_url?: string
   duration?: number
   player_settings?: Partial<PlayerSettings>
+  /** Chave do upload direto; com ela o backend deriva a URL pública do vídeo */
+  storage_key?: string
+  source_size_bytes?: number
 }): Promise<Video> {
   const res = await fetch(`${API_BASE}/videos/`, {
     method: 'POST',
@@ -115,6 +119,8 @@ export async function updateVideo(
     thumbnail_url?: string
     duration?: number
     player_settings?: Partial<PlayerSettings>
+    storage_key?: string
+    source_size_bytes?: number
   }
 ): Promise<Video> {
   const res = await fetch(`${API_BASE}/videos/${id}`, {
@@ -182,7 +188,7 @@ export async function fetchVideoMetrics(
 export async function sendTelemetryEvent(
   videoId: string,
   event: {
-    event_type: string
+    event_type: AnalyticsEventType
     watch_time_seconds?: number
     session_id?: string
     referer?: string
@@ -196,6 +202,28 @@ export async function sendTelemetryEvent(
     })
   } catch (err) {
     console.error('Erro ao enviar telemetria:', err)
+  }
+}
+
+/**
+ * Trechos assistidos da sessão (curva de retenção). Usa sendBeacon com text/plain:
+ * sobrevive ao fechar a aba e não dispara preflight de CORS.
+ */
+export function sendWatchRanges(videoId: string, payload: WatchRangesPayload): void {
+  const url = `${getApiBaseUrl()}/videos/${videoId}/watch`
+  const body = JSON.stringify(payload)
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      if (navigator.sendBeacon(url, new Blob([body], { type: 'text/plain;charset=UTF-8' }))) return
+    }
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body,
+      keepalive: true,
+    }).catch(() => undefined)
+  } catch (err) {
+    console.error('Erro ao enviar trechos assistidos:', err)
   }
 }
 
@@ -222,6 +250,20 @@ export async function uploadFile(file: File): Promise<{ filename: string; url: s
     filename: data.filename,
     url: getMediaUrl(data.url),
   }
+}
+
+/** Gera o HLS de novo (ex.: depois de uma falha no processamento). */
+export async function reprocessVideo(id: string): Promise<Video> {
+  const res = await fetch(`${API_BASE}/videos/${id}/reprocess`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+  handleAuthResponse(res)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || 'Falha ao reprocessar o vídeo.')
+  }
+  return res.json()
 }
 
 export function getMediaUrl(url?: string): string {
