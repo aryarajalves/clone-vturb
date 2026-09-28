@@ -1,6 +1,6 @@
-# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.1.2`
+# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.1.3`
 
-[![Versão](https://img.shields.io/badge/versão-1.1.2-blue.svg)](README.md)
+[![Versão](https://img.shields.io/badge/versão-1.1.3-blue.svg)](README.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker/docker-compose-prod.yml)
 [![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
@@ -220,8 +220,17 @@ npm test
 
 | Imagem | Versão Atual | Descrição |
 |---|---|---|
-| `aryalvesfernandes/clone-vturb:frontend-1.1.2` | `1.1.2` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
-| `aryalvesfernandes/clone-vturb:backend-1.1.2` | `1.1.2` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+| `aryalvesfernandes/clone-vturb:frontend-1.1.3` | `1.1.3` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
+| `aryalvesfernandes/clone-vturb:backend-1.1.3` | `1.1.3` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+
+### 🚀 Novidades da Versão 1.1.3
+- **Filtro de Período Sincronizado para Contatos da VSL**:
+  - A lista de contatos, cards de resumo e paginação agora respeitam com precisão o seletor de período global de métricas (**Hoje**, **Ontem**, **7 Dias**, **30 Dias**, **1 Ano**, **Todo o Período** ou **Personalizado**), calculados no Horário Oficial de Brasília (BRT / UTC-3).
+  - Endpoint `GET /videos/{video_id}/leads` otimizado no backend para receber `period`, `start_date` e `end_date`, filtrando eficientemente as interações do contato.
+  - Função modular `resolve_period_range` criada no backend para unificar a resolução de filtros de data entre métricas e contatos, mantendo o código limpo e DRY.
+- **Expansão da Suíte de Testes Unitários**:
+  - Frontend ampliado para **42 arquivos e 216 testes unitários** (Vitest) 100% aprovados.
+  - Backend com **45 testes unitários** (Pytest) 100% aprovados.
 
 ### 🚀 Novidades da Versão 1.1.2
 - **Sincronização e Ancoragem Exata do Gráfico com a Oferta (CTA)**:
@@ -232,12 +241,6 @@ npm test
   - Limite estrito de até 20 contatos visíveis por página com indicador textual ("Mostrando X a Y de Z contatos").
   - Controles completos de navegação: botões Anterior/Próximo e botões numéricos com destaque para a página ativa.
   - Reset inteligente: ao digitar na barra de pesquisa (por nome, telefone ou lead_id), a visualização retorna automaticamente à página 1 para evitar páginas vazias.
-- **Filtro de Período Sincronizado para Contatos da VSL**:
-  - A lista de contatos, cards de resumo e paginação agora respeitam com precisão o seletor de período global de métricas (**Hoje**, **Ontem**, **7 Dias**, **30 Dias**, **1 Ano**, **Todo o Período** ou **Personalizado**), calculados no Horário Oficial de Brasília (BRT / UTC-3).
-  - Endpoint `GET /videos/{video_id}/leads` otimizado no backend para receber `period`, `start_date` e `end_date`, filtrando eficientemente as interações do contato.
-- **Expansão da Suíte de Testes Unitários**:
-  - Frontend ampliado para **42 arquivos e 216 testes unitários** (Vitest) 100% aprovados.
-  - Backend com **45 testes unitários** (Pytest) 100% aprovados.
 
 ### 🚀 Novidades da Versão 1.1.1
 - **Rastreamento e Histórico de Contatos / Leads na VSL**:
