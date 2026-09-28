@@ -8,10 +8,19 @@ import { VTurbLeadsPagination } from './VTurbLeadsPagination'
 
 interface VTurbLeadsTableProps {
   video: Video
+  period?: string
+  startDate?: string | null
+  endDate?: string | null
   onLeadCountChange?: (count: number) => void
 }
 
-export const VTurbLeadsTable: React.FC<VTurbLeadsTableProps> = ({ video, onLeadCountChange }) => {
+export const VTurbLeadsTable: React.FC<VTurbLeadsTableProps> = ({
+  video,
+  period = 'all',
+  startDate,
+  endDate,
+  onLeadCountChange,
+}) => {
   const [leads, setLeads] = useState<VideoLead[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -23,7 +32,11 @@ export const VTurbLeadsTable: React.FC<VTurbLeadsTableProps> = ({ video, onLeadC
   const loadLeads = async () => {
     try {
       setLoading(true)
-      const data = await fetchVideoLeads(video.id)
+      const data = await fetchVideoLeads(video.id, {
+        period,
+        start_date: startDate,
+        end_date: endDate,
+      })
       setLeads(data.leads || [])
       if (onLeadCountChange) {
         onLeadCountChange(data.total_leads || 0)
@@ -36,8 +49,9 @@ export const VTurbLeadsTable: React.FC<VTurbLeadsTableProps> = ({ video, onLeadC
   }
 
   useEffect(() => {
+    setCurrentPage(1)
     loadLeads()
-  }, [video.id])
+  }, [video.id, period, startDate, endDate])
 
   const copyToClipboard = (text: string, id: string) => {
     if (navigator?.clipboard) {

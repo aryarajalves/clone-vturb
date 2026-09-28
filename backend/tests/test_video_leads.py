@@ -114,3 +114,41 @@ def test_lead_play_404_for_nonexistent_video():
         "phone": "+5511999999999"
     })
     assert res.status_code == 404
+
+def test_filter_leads_by_period():
+    # Cria vídeo de teste
+    video_res = client.post("/videos/", json={
+        "title": "VSL Period Filter Test",
+        "video_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        "duration": 120.0,
+    })
+    assert video_res.status_code == 201
+    video_id = video_res.json()["id"]
+
+    # Registra lead criado hoje
+    client.post("/videos/lead-event", json={
+        "event": "vsl_play",
+        "video_id": video_id,
+        "name": "Lead Hoje",
+        "phone": "+5511911112222",
+        "lead_id": "lead-hoje-1",
+    })
+
+    # Consulta com period=today -> deve retornar o lead
+    res_today = client.get(f"/videos/{video_id}/leads?period=today")
+    assert res_today.status_code == 200
+    data_today = res_today.json()
+    assert data_today["total_leads"] == 1
+    assert data_today["leads"][0]["name"] == "Lead Hoje"
+
+    # Consulta com period=yesterday -> deve retornar 0 leads
+    res_yesterday = client.get(f"/videos/{video_id}/leads?period=yesterday")
+    assert res_yesterday.status_code == 200
+    data_yesterday = res_yesterday.json()
+    assert data_yesterday["total_leads"] == 0
+
+    # Consulta com period=all -> deve retornar o lead
+    res_all = client.get(f"/videos/{video_id}/leads?period=all")
+    assert res_all.status_code == 200
+    assert res_all.json()["total_leads"] == 1
+

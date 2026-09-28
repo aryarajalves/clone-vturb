@@ -343,9 +343,75 @@ def record_lead_play(
     }
 
 
+def resolve_period_range(
+    period: Optional[str] = "all",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> tuple[Optional[datetime], Optional[datetime], str]:
+    now_brt = datetime.now(BRT_TZ)
+    start_dt: Optional[datetime] = None
+    end_dt: Optional[datetime] = None
+
+    if period == "today":
+        start_brt = now_brt.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_brt = now_brt
+        start_dt = start_brt.astimezone(timezone.utc)
+        end_dt = end_brt.astimezone(timezone.utc)
+    elif period == "yesterday":
+        yesterday_brt = now_brt - timedelta(days=1)
+        start_brt = yesterday_brt.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_brt = yesterday_brt.replace(hour=23, minute=59, second=59, microsecond=999999)
+        start_dt = start_brt.astimezone(timezone.utc)
+        end_dt = end_brt.astimezone(timezone.utc)
+    elif period in ("7d", "1week"):
+        start_brt = now_brt - timedelta(days=7)
+        end_brt = now_brt
+        start_dt = start_brt.astimezone(timezone.utc)
+        end_dt = end_brt.astimezone(timezone.utc)
+    elif period in ("30d", "1month"):
+        start_brt = now_brt - timedelta(days=30)
+        end_brt = now_brt
+        start_dt = start_brt.astimezone(timezone.utc)
+        end_dt = end_brt.astimezone(timezone.utc)
+    elif period in ("1y", "1year"):
+        start_brt = now_brt - timedelta(days=365)
+        end_brt = now_brt
+        start_dt = start_brt.astimezone(timezone.utc)
+        end_dt = end_brt.astimezone(timezone.utc)
+    elif start_date or end_date:
+        period = "custom"
+        if start_date:
+            try:
+                if "T" in start_date:
+                    parsed_s = datetime.fromisoformat(start_date)
+                    start_brt = parsed_s if parsed_s.tzinfo else parsed_s.replace(tzinfo=BRT_TZ)
+                else:
+                    start_brt = datetime.fromisoformat(f"{start_date}T00:00:00").replace(tzinfo=BRT_TZ)
+                start_dt = start_brt.astimezone(timezone.utc)
+            except Exception:
+                start_dt = None
+        if end_date:
+            try:
+                if "T" in end_date:
+                    parsed_e = datetime.fromisoformat(end_date)
+                    end_brt = parsed_e if parsed_e.tzinfo else parsed_e.replace(tzinfo=BRT_TZ)
+                else:
+                    end_brt = datetime.fromisoformat(f"{end_date}T23:59:59.999999").replace(tzinfo=BRT_TZ)
+                end_dt = end_brt.astimezone(timezone.utc)
+            except Exception:
+                end_dt = None
+    else:
+        period = "all"
+
+    return start_dt, end_dt, period
+
+
 @router.get("/{video_id}/leads", response_model=VideoLeadsListResponse)
 def get_video_leads(
     video_id: str,
+    period: Optional[str] = Query("all", description="today, yesterday, 7d, 30d, 1y, all, custom"),
+    start_date: Optional[str] = Query(None, description="YYYY-MM-DD ou ISO"),
+    end_date: Optional[str] = Query(None, description="YYYY-MM-DD ou ISO"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -353,12 +419,15 @@ def get_video_leads(
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
 
-    leads = (
-        db.query(VideoLead)
-        .filter(VideoLead.video_id == video_id)
-        .order_by(VideoLead.last_seen_at.desc())
-        .all()
-    )
+    start_dt, end_dt, _ = resolve_period_range(period, start_date, end_date)
+
+    leads_query = db.query(VideoLead).filter(VideoLead.video_id == video_id)
+    if start_dt:
+        leads_query = leads_query.filter(func.coalesce(VideoLead.first_play_at, VideoLead.created_at) >= start_dt)
+    if end_dt:
+        leads_query = leads_query.filter(func.coalesce(VideoLead.first_play_at, VideoLead.created_at) <= end_dt)
+
+    leads = leads_query.order_by(VideoLead.last_seen_at.desc()).all()
     total_leads = len(leads)
     leads_reached_cta = sum(1 for l in leads if l.reached_cta)
 
@@ -481,60 +550,7 @@ def get_video_metrics(
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
 
-    now_brt = datetime.now(BRT_TZ)
-    start_dt: Optional[datetime] = None
-    end_dt: Optional[datetime] = None
-
-    if period == "today":
-        start_brt = now_brt.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_brt = now_brt
-        start_dt = start_brt.astimezone(timezone.utc)
-        end_dt = end_brt.astimezone(timezone.utc)
-    elif period == "yesterday":
-        yesterday_brt = now_brt - timedelta(days=1)
-        start_brt = yesterday_brt.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_brt = yesterday_brt.replace(hour=23, minute=59, second=59, microsecond=999999)
-        start_dt = start_brt.astimezone(timezone.utc)
-        end_dt = end_brt.astimezone(timezone.utc)
-    elif period in ("7d", "1week"):
-        start_brt = now_brt - timedelta(days=7)
-        end_brt = now_brt
-        start_dt = start_brt.astimezone(timezone.utc)
-        end_dt = end_brt.astimezone(timezone.utc)
-    elif period in ("30d", "1month"):
-        start_brt = now_brt - timedelta(days=30)
-        end_brt = now_brt
-        start_dt = start_brt.astimezone(timezone.utc)
-        end_dt = end_brt.astimezone(timezone.utc)
-    elif period in ("1y", "1year"):
-        start_brt = now_brt - timedelta(days=365)
-        end_brt = now_brt
-        start_dt = start_brt.astimezone(timezone.utc)
-        end_dt = end_brt.astimezone(timezone.utc)
-    elif start_date or end_date:
-        period = "custom"
-        if start_date:
-            try:
-                if "T" in start_date:
-                    parsed_s = datetime.fromisoformat(start_date)
-                    start_brt = parsed_s if parsed_s.tzinfo else parsed_s.replace(tzinfo=BRT_TZ)
-                else:
-                    start_brt = datetime.fromisoformat(f"{start_date}T00:00:00").replace(tzinfo=BRT_TZ)
-                start_dt = start_brt.astimezone(timezone.utc)
-            except Exception:
-                start_dt = None
-        if end_date:
-            try:
-                if "T" in end_date:
-                    parsed_e = datetime.fromisoformat(end_date)
-                    end_brt = parsed_e if parsed_e.tzinfo else parsed_e.replace(tzinfo=BRT_TZ)
-                else:
-                    end_brt = datetime.fromisoformat(f"{end_date}T23:59:59.999999").replace(tzinfo=BRT_TZ)
-                end_dt = end_brt.astimezone(timezone.utc)
-            except Exception:
-                end_dt = None
-    else:
-        period = "all"
+    start_dt, end_dt, period = resolve_period_range(period, start_date, end_date)
 
     base_query = db.query(VideoAnalytics).filter(VideoAnalytics.video_id == video_id)
     if start_dt:

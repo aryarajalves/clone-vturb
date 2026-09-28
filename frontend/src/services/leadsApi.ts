@@ -4,8 +4,17 @@ import type { VideoLeadsResponse, VideoLeadPlayPayload } from '../types/video'
 /**
  * Consulta a lista de leads/contatos que deram play na VSL e seu progresso ao longo do tempo.
  */
-export async function fetchVideoLeads(videoId: string): Promise<VideoLeadsResponse> {
-  const res = await fetch(`${API_BASE}/videos/${videoId}/leads`, {
+export async function fetchVideoLeads(
+  videoId: string,
+  filters?: { period?: string; start_date?: string | null; end_date?: string | null }
+): Promise<VideoLeadsResponse> {
+  const query = new URLSearchParams()
+  if (filters?.period) query.append('period', filters.period)
+  if (filters?.start_date) query.append('start_date', filters.start_date)
+  if (filters?.end_date) query.append('end_date', filters.end_date)
+
+  const queryString = query.toString() ? `?${query.toString()}` : ''
+  const res = await fetch(`${API_BASE}/videos/${videoId}/leads${queryString}`, {
     headers: { ...authHeaders() },
   })
   handleAuthResponse(res)

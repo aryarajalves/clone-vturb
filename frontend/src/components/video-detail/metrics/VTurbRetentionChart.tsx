@@ -262,7 +262,12 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
           </div>
         </div>
       ) : activeTab === 'leads' ? (
-        <VTurbLeadsTable video={video} />
+        <VTurbLeadsTable
+          video={video}
+          period={metrics.period}
+          startDate={metrics.start_date}
+          endDate={metrics.end_date}
+        />
       ) : (
         <VTurbMetricsBreakdown tab={activeTab as BreakdownTab} />
       )}

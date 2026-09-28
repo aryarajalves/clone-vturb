@@ -232,9 +232,12 @@ npm test
   - Limite estrito de até 20 contatos visíveis por página com indicador textual ("Mostrando X a Y de Z contatos").
   - Controles completos de navegação: botões Anterior/Próximo e botões numéricos com destaque para a página ativa.
   - Reset inteligente: ao digitar na barra de pesquisa (por nome, telefone ou lead_id), a visualização retorna automaticamente à página 1 para evitar páginas vazias.
+- **Filtro de Período Sincronizado para Contatos da VSL**:
+  - A lista de contatos, cards de resumo e paginação agora respeitam com precisão o seletor de período global de métricas (**Hoje**, **Ontem**, **7 Dias**, **30 Dias**, **1 Ano**, **Todo o Período** ou **Personalizado**), calculados no Horário Oficial de Brasília (BRT / UTC-3).
+  - Endpoint `GET /videos/{video_id}/leads` otimizado no backend para receber `period`, `start_date` e `end_date`, filtrando eficientemente as interações do contato.
 - **Expansão da Suíte de Testes Unitários**:
-  - Frontend ampliado para **42 arquivos e 215 testes unitários** (Vitest) 100% aprovados.
-  - Backend com **44 testes unitários** (Pytest) 100% aprovados.
+  - Frontend ampliado para **42 arquivos e 216 testes unitários** (Vitest) 100% aprovados.
+  - Backend com **45 testes unitários** (Pytest) 100% aprovados.
 
 ### 🚀 Novidades da Versão 1.1.1
 - **Rastreamento e Histórico de Contatos / Leads na VSL**:

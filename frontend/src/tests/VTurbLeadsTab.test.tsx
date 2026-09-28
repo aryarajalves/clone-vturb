@@ -223,5 +223,31 @@ describe('VTurbLeadsTab - Rastreamento e Visualização de Contatos que Deram Pl
       'Mostrando 21 a 25 de 25 contatos (máx. 20 por página)'
     )
   })
+
+  it('filtra contatos pelo período selecionado repassando os parâmetros para fetchVideoLeads', async () => {
+    const fetchSpy = vi.spyOn(api, 'fetchVideoLeads').mockResolvedValue(mockLeadsData)
+
+    const { rerender } = render(<VTurbLeadsTable video={mockVideo} period="today" />)
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(mockVideo.id, {
+        period: 'today',
+        start_date: undefined,
+        end_date: undefined,
+      })
+    })
+
+    // Ao mudar o período para "yesterday", deve disparar nova busca com period="yesterday"
+    rerender(<VTurbLeadsTable video={mockVideo} period="yesterday" />)
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(mockVideo.id, {
+        period: 'yesterday',
+        start_date: undefined,
+        end_date: undefined,
+      })
+    })
+  })
 })
+
 
