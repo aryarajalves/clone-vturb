@@ -165,4 +165,63 @@ describe('VTurbLeadsTab - Rastreamento e Visualização de Contatos que Deram Pl
       expect(screen.getByText(/Nenhum contato registrado nesta VSL ainda/i)).toBeInTheDocument()
     })
   })
+
+  it('exibe no máximo 20 contatos por página e permite navegar para a próxima página quando há mais de 20', async () => {
+    // Cria 25 contatos mockados
+    const manyLeads = Array.from({ length: 25 }, (_, i) => ({
+      id: i + 1,
+      video_id: mockVideo.id,
+      lead_id: `lead-uuid-${i + 1}`,
+      name: `Contato Numero ${i + 1}`,
+      phone: `+55 (11) 90000-${String(i + 1).padStart(4, '0')}`,
+      session_id: `sess-${i + 1}`,
+      event: 'vsl_play',
+      watch_time_seconds: 100.0,
+      max_progress_percent: 50.0,
+      reached_cta: false,
+      play_count: 1,
+      first_play_at: '2026-09-28T16:00:00Z',
+      last_seen_at: '2026-09-28T16:05:00Z',
+      created_at: '2026-09-28T16:00:00Z',
+    }))
+
+    vi.spyOn(api, 'fetchVideoLeads').mockResolvedValueOnce({
+      video_id: mockVideo.id,
+      total_leads: 25,
+      leads_reached_cta: 0,
+      leads: manyLeads,
+    })
+
+    render(<VTurbLeadsTable video={mockVideo} />)
+
+    // Aguarda carregar
+    await waitFor(() => {
+      expect(screen.getByText('Contato Numero 1')).toBeInTheDocument()
+    })
+
+    // Contato 20 deve estar na página 1
+    expect(screen.getByText('Contato Numero 20')).toBeInTheDocument()
+    // Contato 21 NÃO deve estar na página 1 (máx 20 por página)
+    expect(screen.queryByText('Contato Numero 21')).not.toBeInTheDocument()
+
+    // Barra de paginação
+    const info = screen.getByTestId('pagination-leads-info')
+    expect(info).toHaveTextContent('Mostrando 1 a 20 de 25 contatos (máx. 20 por página)')
+
+    // Clica para ir para a página 2
+    const nextBtn = screen.getByTestId('pagination-leads-next')
+    fireEvent.click(nextBtn)
+
+    // Na página 2, o Contato 21 deve aparecer
+    expect(screen.getByText('Contato Numero 21')).toBeInTheDocument()
+    expect(screen.getByText('Contato Numero 25')).toBeInTheDocument()
+    // E o Contato 1 da página 1 não deve estar mais visível
+    expect(screen.queryByText('Contato Numero 1')).not.toBeInTheDocument()
+
+    // Info atualizada na página 2
+    expect(screen.getByTestId('pagination-leads-info')).toHaveTextContent(
+      'Mostrando 21 a 25 de 25 contatos (máx. 20 por página)'
+    )
+  })
 })
+

@@ -212,4 +212,53 @@ describe('VTurbRetentionChart - Gráfico Oficial VTurb com Vídeo Centralizado',
     expect(screen.getByTestId('chart-cta-marker-line')).toBeInTheDocument()
     expect(screen.getByTestId('chart-cta-badge')).toHaveTextContent('🎯 Oferta 01:00')
   })
+
+  it('exibe dados idênticos ao card de CTA no tooltip ao posicionar o cursor no ponto da oferta', () => {
+    // Duração de 100s, CTA em 50s => exatamente 50%
+    const videoWithCta: Video = {
+      ...mockVideo,
+      duration: 100,
+      player_settings: {
+        ...mockVideo.player_settings,
+        cta_time: 50,
+      },
+    }
+    const metricsWithCta: VideoMetrics = {
+      ...mockMetrics,
+      cta_metric: {
+        cta_time_seconds: 50,
+        cta_time_formatted: '00:50',
+        audience_reached: 2,
+        retention_percent: 5.26,
+      },
+    }
+
+    render(<VTurbRetentionChart video={videoWithCta} metrics={metricsWithCta} />)
+
+    const canvas = screen.getByTestId('vturb-chart-canvas')
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      width: 500,
+      height: 260,
+      left: 0,
+      top: 0,
+      right: 500,
+      bottom: 260,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    })
+
+    // Move mouse para 50% do gráfico (x = 250)
+    fireEvent.mouseMove(canvas, { clientX: 250 })
+
+    const header = screen.getByTestId('vturb-tooltip-header')
+    expect(header).toHaveTextContent('🎯 Oferta')
+
+    const audience = screen.getByTestId('vturb-tooltip-audience')
+    expect(audience).toHaveTextContent('2')
+
+    const retention = screen.getByTestId('vturb-tooltip-retention')
+    expect(retention).toHaveTextContent('5,26%')
+  })
 })
+

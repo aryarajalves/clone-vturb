@@ -88,11 +88,35 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
     plays: 0,
   }
 
+  // Momento do CTA configurado no vídeo para exibição de marcador no gráfico
+  const ctaTime =
+    metrics.cta_metric?.cta_time_seconds ||
+    video.player_settings?.cta_time ||
+    video.player_settings?.pitch_delay?.time ||
+    0
+  const ctaXPercent =
+    activeTab === 'retention' && ctaTime > 0 && duration > 0
+      ? Math.min(100, Math.max(0, (ctaTime / duration) * 100))
+      : undefined
+  const ctaLabel =
+    metrics.cta_metric?.cta_time_formatted ||
+    formatTime(ctaTime)
+
+  const ctaOverride =
+    ctaXPercent !== undefined && metrics.cta_metric
+      ? {
+          xPercent: ctaXPercent,
+          audience: metrics.cta_metric.audience_reached,
+          retention: metrics.cta_metric.retention_percent,
+        }
+      : undefined
+
   const currentRetentionData = getInterpolatedRetention(
     cursorPercent,
     retentionValues,
     totalPlays,
-    audienceBase
+    audienceBase,
+    ctaOverride
   )
   const currentSecs = Math.round((cursorPercent / 100) * duration)
   const currentTimeFormatted = formatTime(currentSecs)
@@ -113,20 +137,6 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
       : 0
 
   const dotYPct = getDotYCoordinatePct(currentActivityPct)
-
-  // Momento do CTA configurado no vídeo para exibição de marcador no gráfico
-  const ctaTime =
-    metrics.cta_metric?.cta_time_seconds ||
-    video.player_settings?.cta_time ||
-    video.player_settings?.pitch_delay?.time ||
-    0
-  const ctaXPercent =
-    activeTab === 'retention' && ctaTime > 0 && duration > 0
-      ? Math.min(100, Math.max(0, (ctaTime / duration) * 100))
-      : undefined
-  const ctaLabel =
-    metrics.cta_metric?.cta_time_formatted ||
-    formatTime(ctaTime)
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!chartRef.current) return
@@ -228,6 +238,7 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
                 selectedHourData={selectedHourData}
                 currentTimeFormatted={currentTimeFormatted}
                 currentRetentionData={currentRetentionData}
+                ctaLabel={ctaLabel}
               />
             </RetentionChartCanvas>
           </div>

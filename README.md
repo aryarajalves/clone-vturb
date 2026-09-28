@@ -1,6 +1,6 @@
-# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.1.1`
+# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.1.2`
 
-[![Versão](https://img.shields.io/badge/versão-1.1.1-blue.svg)](README.md)
+[![Versão](https://img.shields.io/badge/versão-1.1.2-blue.svg)](README.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker/docker-compose-prod.yml)
 [![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
@@ -220,8 +220,21 @@ npm test
 
 | Imagem | Versão Atual | Descrição |
 |---|---|---|
-| `aryalvesfernandes/clone-vturb:frontend-1.1.1` | `1.1.1` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
-| `aryalvesfernandes/clone-vturb:backend-1.1.1` | `1.1.1` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+| `aryalvesfernandes/clone-vturb:frontend-1.1.2` | `1.1.2` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
+| `aryalvesfernandes/clone-vturb:backend-1.1.2` | `1.1.2` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+
+### 🚀 Novidades da Versão 1.1.2
+- **Sincronização e Ancoragem Exata do Gráfico com a Oferta (CTA)**:
+  - Ancoragem matemática no cálculo de retenção interpolada (`ctaOverride`) para que, ao posicionar o cursor no momento da oferta (`🎯 Oferta MM:SS`), o tooltip flutuante e o ponto verde no gráfico reflitam com 100% de exatidão os dados reais consolidados de espectadores e taxa de retenção registrados no card inferior de CTA (`metrics.cta_metric`).
+  - Badge visual de destaque `🎯 Oferta` exibido no cabeçalho do tooltip flutuante ao passar o cursor sobre a linha da oferta.
+- **Sistema de Paginação Inteligente na Tabela de Contatos / Leads (Máx. 20 por página)**:
+  - Componente modular de paginação (`VTurbLeadsPagination`) seguindo o design dark neon da aba de Métricas VTurb.
+  - Limite estrito de até 20 contatos visíveis por página com indicador textual ("Mostrando X a Y de Z contatos").
+  - Controles completos de navegação: botões Anterior/Próximo e botões numéricos com destaque para a página ativa.
+  - Reset inteligente: ao digitar na barra de pesquisa (por nome, telefone ou lead_id), a visualização retorna automaticamente à página 1 para evitar páginas vazias.
+- **Expansão da Suíte de Testes Unitários**:
+  - Frontend ampliado para **42 arquivos e 215 testes unitários** (Vitest) 100% aprovados.
+  - Backend com **44 testes unitários** (Pytest) 100% aprovados.
 
 ### 🚀 Novidades da Versão 1.1.1
 - **Rastreamento e Histórico de Contatos / Leads na VSL**:

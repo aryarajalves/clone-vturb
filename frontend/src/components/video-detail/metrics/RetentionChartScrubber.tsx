@@ -14,7 +14,9 @@ interface RetentionChartScrubberProps {
   currentRetentionData: {
     retention: number
     audience: number
+    isCtaPoint?: boolean
   }
+  ctaLabel?: string
 }
 
 export const RetentionChartScrubber: React.FC<RetentionChartScrubberProps> = ({
@@ -24,6 +26,7 @@ export const RetentionChartScrubber: React.FC<RetentionChartScrubberProps> = ({
   selectedHourData,
   currentTimeFormatted,
   currentRetentionData,
+  ctaLabel,
 }) => {
   return (
     <div
@@ -82,14 +85,36 @@ export const RetentionChartScrubber: React.FC<RetentionChartScrubberProps> = ({
             fontSize: '0.82rem',
             fontWeight: 700,
             marginBottom: '0.45rem',
-            color: '#f8fafc',
+            color: currentRetentionData.isCtaPoint ? '#eab308' : '#f8fafc',
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
             paddingBottom: '0.3rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
           }}
         >
-          {activeTab === 'hourly'
-            ? `${selectedHourData.label} - ${(selectedHourData.hour + 1) % 24}:00`
-            : `${currentTimeFormatted} - ${cursorPercent}%`}
+          <span>
+            {activeTab === 'hourly'
+              ? `${selectedHourData.label} - ${(selectedHourData.hour + 1) % 24}:00`
+              : `${currentTimeFormatted} - ${cursorPercent}%`}
+          </span>
+          {activeTab !== 'hourly' && currentRetentionData.isCtaPoint && (
+            <span
+              style={{
+                fontSize: '0.68rem',
+                padding: '2px 5px',
+                borderRadius: '4px',
+                background: 'rgba(234, 179, 8, 0.15)',
+                color: '#eab308',
+                border: '1px solid rgba(234, 179, 8, 0.3)',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              🎯 Oferta
+            </span>
+          )}
         </div>
 
         <div

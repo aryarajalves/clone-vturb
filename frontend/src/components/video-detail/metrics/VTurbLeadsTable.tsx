@@ -4,6 +4,7 @@ import type { Video, VideoLead } from '../../../types/video'
 import { fetchVideoLeads } from '../../../services/api'
 import { VTurbLeadsSummaryCards } from './VTurbLeadsSummaryCards'
 import { VTurbLeadsTableRow } from './VTurbLeadsTableRow'
+import { VTurbLeadsPagination } from './VTurbLeadsPagination'
 
 interface VTurbLeadsTableProps {
   video: Video
@@ -15,6 +16,9 @@ export const VTurbLeadsTable: React.FC<VTurbLeadsTableProps> = ({ video, onLeadC
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const ITEMS_PER_PAGE = 20
 
   const loadLeads = async () => {
     try {
@@ -78,6 +82,20 @@ export const VTurbLeadsTable: React.FC<VTurbLeadsTableProps> = ({ video, onLeadC
       return Boolean(nameMatch || phoneMatch || idMatch)
     })
   }, [leads, searchTerm])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
+  const totalFiltered = filteredLeads.length
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / ITEMS_PER_PAGE))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalFiltered)
+
+  const paginatedLeads = useMemo(() => {
+    return filteredLeads.slice(startIndex, endIndex)
+  }, [filteredLeads, startIndex, endIndex])
 
   const totalLeads = leads.length
   const leadsReachedCta = leads.filter((l) => l.reached_cta).length
@@ -239,7 +257,7 @@ export const VTurbLeadsTable: React.FC<VTurbLeadsTableProps> = ({ video, onLeadC
               </tr>
             </thead>
             <tbody>
-              {filteredLeads.map((lead) => (
+              {paginatedLeads.map((lead) => (
                 <VTurbLeadsTableRow
                   key={lead.id}
                   lead={lead}
@@ -252,6 +270,19 @@ export const VTurbLeadsTable: React.FC<VTurbLeadsTableProps> = ({ video, onLeadC
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Paginação da Tabela de Contatos (máx. 20 por página) */}
+      {!loading && filteredLeads.length > 0 && (
+        <VTurbLeadsPagination
+          currentPage={safeCurrentPage}
+          totalPages={totalPages}
+          totalItems={totalFiltered}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       )}
     </div>
   )

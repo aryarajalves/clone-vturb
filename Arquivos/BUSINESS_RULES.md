@@ -62,6 +62,7 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
     - Sub-aba dedicada **"Contatos"** incorporada à barra de navegação do gráfico de retenção oficial do VTurb.
     - **Cards de Resumo**: Total de contatos únicos que deram play, total e % que chegaram na oferta e retenção média.
     - **Tabela com Visual Dark Neon**: Exibição de Avatar + Nome do contato, WhatsApp formatado com link direto para conversa (`https://wa.me/...`), Lead ID com botão de cópia de 1 clique, data e horário do play formatados no Horário Oficial de Brasília (`DD/MM/YYYY às HH:mm`), barra de progresso visual com tempo assistido (`MM:SS`) e badge indicativo de oferta alcançada (`🎯 Chegou na Oferta`).
+    - **Paginação de Contatos (Máx. 20 por página)**: A tabela exibe no máximo 20 contatos por vez, com controles de navegação (Anterior, Próximo e botões numéricos de página), resumo descritivo de registros exibidos e reset automático para a página 1 ao filtrar pelo campo de busca.
 
 
 ---

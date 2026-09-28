@@ -84,6 +84,29 @@ describe('retentionChartHelpers - Testes Unitários dos Utilitários de Retenç�
     const resZero = getInterpolatedRetention(50, retValues, 0, 0)
     expect(resZero.retention).toBe(0)
     expect(resZero.audience).toBe(0)
+
+    // Com ctaOverride ativo (ex: oferta configurada aos 86% com 2 pessoas e 5.26% de retenção)
+    const ctaOverride = {
+      xPercent: 86,
+      audience: 2,
+      retention: 5.26,
+    }
+    // No ponto exato (86%)
+    const resAtCta = getInterpolatedRetention(86, retValues, 38, 38, ctaOverride)
+    expect(resAtCta.isCtaPoint).toBe(true)
+    expect(resAtCta.audience).toBe(2)
+    expect(resAtCta.retention).toBe(5.26)
+
+    // Dentro da margem de proximidade (85% ou 87% -> abs <= 1.8)
+    const resNearCta = getInterpolatedRetention(87, retValues, 38, 38, ctaOverride)
+    expect(resNearCta.isCtaPoint).toBe(true)
+    expect(resNearCta.audience).toBe(2)
+    expect(resNearCta.retention).toBe(5.26)
+
+    // Fora da margem da oferta (ex: 50%)
+    const resFarCta = getInterpolatedRetention(50, retValues, 38, 38, ctaOverride)
+    expect(resFarCta.isCtaPoint).toBe(false)
+    expect(resFarCta.retention).toBe(60)
   })
 
   it('calcula a coordenada Y do SVG onde 100% = topo e 0% = base', () => {

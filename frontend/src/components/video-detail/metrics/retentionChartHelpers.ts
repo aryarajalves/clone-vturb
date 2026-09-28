@@ -58,13 +58,30 @@ export const getBezierFactor = (u: number): number => {
   return t * t * (3 - 2 * t)
 }
 
+export interface CtaChartOverride {
+  xPercent: number
+  audience: number
+  retention: number
+}
+
 export const getInterpolatedRetention = (
   pct: number,
   retentionValues: RetentionValues,
   totalPlays: number,
-  audienceBase: number
+  audienceBase: number,
+  ctaOverride?: CtaChartOverride
 ) => {
-  if (totalPlays === 0) return { retention: 0, audience: 0 }
+  if (totalPlays === 0) return { retention: 0, audience: 0, isCtaPoint: false }
+
+  // Sincroniza perfeitamente com os dados reais do banco quando o scrubber estiver no momento da oferta
+  if (ctaOverride && Math.abs(pct - ctaOverride.xPercent) <= 1.8) {
+    return {
+      retention: ctaOverride.retention,
+      audience: ctaOverride.audience,
+      isCtaPoint: true,
+    }
+  }
+
   let ret = 0
 
   if (pct <= 25) {
@@ -87,6 +104,7 @@ export const getInterpolatedRetention = (
   return {
     retention: finalRet,
     audience: Math.max(0, aud),
+    isCtaPoint: false,
   }
 }
 
