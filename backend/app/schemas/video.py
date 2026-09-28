@@ -129,6 +129,10 @@ class AnalyticsEventCreate(BaseModel):
     watch_time_seconds: Optional[float] = 0.0
     session_id: Optional[str] = None
     referer: Optional[str] = None
+    lead_id: Optional[str] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+
 
 class HourlyMetric(BaseModel):
     hour: int
@@ -177,5 +181,43 @@ class BulkDeleteRequest(BaseModel):
 class BulkDeleteResponse(BaseModel):
     deleted_count: int
     deleted_ids: List[str]
+
+
+class VideoLeadPlayPayload(BaseModel):
+    event: str = Field(default="vsl_play", description="Nome do evento (ex: vsl_play)")
+    video_id: str = Field(..., description="ID do vídeo")
+    name: Optional[str] = Field(None, description="Nome do contato")
+    phone: Optional[str] = Field(None, description="Número de telefone / WhatsApp do contato")
+    lead_id: Optional[str] = Field(None, description="Identificador único do lead")
+    session_id: Optional[str] = Field(None, description="Identificador da sessão do player")
+    watch_time_seconds: Optional[float] = Field(default=0.0, description="Tempo assistido em segundos")
+    progress_percent: Optional[float] = Field(default=0.0, description="Porcentagem de progresso na VSL")
+
+
+class VideoLeadItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    video_id: str
+    lead_id: Optional[str] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    session_id: Optional[str] = None
+    event: str
+    watch_time_seconds: float
+    max_progress_percent: float
+    reached_cta: bool
+    play_count: int
+    first_play_at: Optional[datetime] = None
+    last_seen_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class VideoLeadsListResponse(BaseModel):
+    video_id: str
+    total_leads: int
+    leads_reached_cta: int
+    leads: List[VideoLeadItemResponse]
+
 
 

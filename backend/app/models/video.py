@@ -35,6 +35,7 @@ class Video(Base):
     updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     analytics = relationship("VideoAnalytics", back_populates="video", cascade="all, delete-orphan")
+    leads = relationship("VideoLead", back_populates="video", cascade="all, delete-orphan")
 
 
 class VideoAnalytics(Base):
@@ -49,3 +50,24 @@ class VideoAnalytics(Base):
     created_at = Column(DateTime(timezone=True), default=get_utc_now, index=True)
 
     video = relationship("Video", back_populates="analytics")
+
+
+class VideoLead(Base):
+    __tablename__ = "video_leads"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    video_id = Column(String(36), ForeignKey("videos.id", ondelete="CASCADE"), nullable=False, index=True)
+    lead_id = Column(String(100), nullable=True, index=True)
+    name = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True, index=True)
+    session_id = Column(String(100), nullable=True, index=True)
+    event = Column(String(50), default="vsl_play")
+    watch_time_seconds = Column(Float, default=0.0)
+    max_progress_percent = Column(Float, default=0.0)
+    reached_cta = Column(Integer, default=0) # 0 ou 1 para compatibilidade total
+    play_count = Column(Integer, default=1)
+    first_play_at = Column(DateTime(timezone=True), default=get_utc_now)
+    last_seen_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now, index=True)
+
+    video = relationship("Video", back_populates="leads")

@@ -1,6 +1,6 @@
-# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.0.9`
+# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.1.1`
 
-[![Versão](https://img.shields.io/badge/versão-1.0.9-blue.svg)](README.md)
+[![Versão](https://img.shields.io/badge/versão-1.1.1-blue.svg)](README.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker/docker-compose-prod.yml)
 [![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
@@ -220,18 +220,27 @@ npm test
 
 | Imagem | Versão Atual | Descrição |
 |---|---|---|
-| `aryalvesfernandes/clone-vturb:frontend-1.0.9` | `1.0.9` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
-| `aryalvesfernandes/clone-vturb:backend-1.0.9` | `1.0.9` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+| `aryalvesfernandes/clone-vturb:frontend-1.1.1` | `1.1.1` | Frontend React + Vite compilado servido via Nginx Alpine com suporte a Embed e HMR |
+| `aryalvesfernandes/clone-vturb:backend-1.1.1` | `1.1.1` | API FastAPI com suporte a Uvicorn Multi-Workers, Argon2id e telemetria |
+
+### 🚀 Novidades da Versão 1.1.1
+- **Rastreamento e Histórico de Contatos / Leads na VSL**:
+  - **Recepção de Leads via POST**: Endpoint dedicado `POST /videos/lead-event` e `POST /videos/lead-play` que registra automaticamente contatos no formato padronizado `{ "event": "vsl_play", "video_id": "...", "name": "...", "phone": "...", "lead_id": "..." }`.
+  - **Captura Flexível Dupla**: Captura instantânea e autônoma pelo player de vídeo incorporado via parâmetros de URL do iframe (`?name=...&phone=...&lead_id=...`) ou mensagens `window.postMessage({ type: 'VTURB_IDENTIFY' })`.
+  - **Sincronização Temporal Contínua**: Acompanhamento dinâmico do progresso individual de cada contato pela VSL ao longo do tempo (tempo assistido, % de retenção e se alcançou o momento da oferta/CTA).
+  - **Nova Sub-Aba "Contatos" no Gráfico de Métricas VTurb**: Integrada diretamente ao card escuro de métricas do vídeo, exibindo cards de resumo (total de contatos, alcance da CTA, retenção média), busca em tempo real e tabela dark neon com inicial do contato, link direto para WhatsApp Web (`https://wa.me/...`), Lead ID com botão de cópia rápida, data/horário em Horário Oficial de Brasília e badge `🎯 Chegou na Oferta`.
+
+### 🚀 Novidades da Versão 1.1.0
+- **Blindagem de Precisão nas Métricas (Quiz & Embeds Externos)**:
+  - **Bloqueio em Smart Autoplay Mudo**: Eventos de retenção (`progress_25..100`), alcance da oferta (`cta_reached` / `pitch_reached`) e pixels não são disparados enquanto o vídeo roda mudo atrás da capa *"Clique para Ouvir"*, e o backend filtra apenas sessões que registraram evento de `play` real (`play_sessions_subq`).
+  - **Detecção de Visibilidade Real (`IntersectionObserver` & `isElementCurrentlyVisible`)**: Aguarda o `<iframe>` estar efetivamente visível na tela antes de disparar impressão e autoplay (evitando contagens falsas quando Quizzes pré-carregam o player oculto em etapas anteriores).
+  - **ID de Visitante 1st-Party Persistente (`?sid=`)**: Sincronização do `vturb_visitor_id` a partir do domínio primário da página mãe com fallback em `sessionStorage`.
 
 ### 🚀 Novidades da Versão 1.0.9
 - **Métrica e Configuração Rápida de Alcance da Oferta (CTA) por Pessoa Única**:
   - Barra de configuração rápida do **Momento da Oferta (CTA)** diretamente na aba de **Métricas** (minutos e segundos).
   - Card de destaque **🎯 Chegaram na Oferta (CTA)**, marcador vertical no gráfico de retenção (`🎯 Oferta MM:SS`) e etapa destacada no Funil de Retenção.
   - Deduplicação estrita por espectador único (`DISTINCT session_id`) tanto no alcance da CTA quanto nos marcos de retenção (`25%`, `50%`, `75%`, `100%`), garantindo que a mesma pessoa não seja contada em duplicidade ao assistir o vídeo mais de uma vez.
-- **Blindagem de Precisão nas Métricas (Quiz & Embeds Externos)**:
-  - **Bloqueio em Smart Autoplay Mudo**: Eventos de retenção (`progress_25..100`), alcance da oferta (`cta_reached` / `pitch_reached`) e pixels não são disparados enquanto o vídeo roda mudo atrás da capa *"Clique para Ouvir"*, e o backend filtra apenas sessões que registraram evento de `play` real.
-  - **Detecção de Visibilidade Real (`IntersectionObserver` & `isElementCurrentlyVisible`)**: Aguarda o `<iframe>` estar efetivamente visível na tela antes de disparar impressão e autoplay (evitando contagens falsas quando Quizzes pré-carregam o player oculto em etapas anteriores).
-  - **ID de Visitante 1st-Party Persistente (`?sid=`)**: Sincronização do `vturb_visitor_id` a partir do domínio primário da página mãe com fallback em `sessionStorage`.
 - **Precisão Sub-Pixel na Curva do Gráfico de Retenção & Auto-Detecção de Duração**:
   - Interpolação cúbica de Bézier exata por Newton-Raphson (`solveBezierT`) mantendo a bolinha verde do scrubber perfeitamente centralizada na linha da curva em toda a extensão do gráfico.
   - Auto-detecção e persistência automática da duração real do vídeo via metadados HTML5 quando cadastrado com duração zerada.

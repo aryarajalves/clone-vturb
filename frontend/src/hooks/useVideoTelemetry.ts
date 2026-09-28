@@ -8,6 +8,7 @@ interface UseVideoTelemetryProps {
   videoId: string
   visitorId: string
   setShowCta: (show: boolean) => void
+  leadData?: { name?: string; phone?: string; lead_id?: string }
 }
 
 export function useVideoTelemetry({
@@ -15,6 +16,7 @@ export function useVideoTelemetry({
   videoId,
   visitorId,
   setShowCta,
+  leadData,
 }: UseVideoTelemetryProps) {
   const progressSent = useRef<{ [key: string]: boolean }>({})
   const pixelEventsSent = useRef<{ [key: string]: boolean }>({})
@@ -56,17 +58,17 @@ export function useVideoTelemetry({
 
       if (pct >= 25 && !progressSent.current['25']) {
         progressSent.current['25'] = true
-        sendTelemetryEvent(videoId, { event_type: 'progress_25', watch_time_seconds: current, session_id: visitorId })
+        sendTelemetryEvent(videoId, { event_type: 'progress_25', watch_time_seconds: current, session_id: visitorId, ...leadData })
         dispatchPixelEvent('percent_25')
       }
       if (pct >= 50 && !progressSent.current['50']) {
         progressSent.current['50'] = true
-        sendTelemetryEvent(videoId, { event_type: 'progress_50', watch_time_seconds: current, session_id: visitorId })
+        sendTelemetryEvent(videoId, { event_type: 'progress_50', watch_time_seconds: current, session_id: visitorId, ...leadData })
         dispatchPixelEvent('percent_50')
       }
       if (pct >= 75 && !progressSent.current['75']) {
         progressSent.current['75'] = true
-        sendTelemetryEvent(videoId, { event_type: 'progress_75', watch_time_seconds: current, session_id: visitorId })
+        sendTelemetryEvent(videoId, { event_type: 'progress_75', watch_time_seconds: current, session_id: visitorId, ...leadData })
         dispatchPixelEvent('percent_75')
       }
     }
@@ -80,6 +82,7 @@ export function useVideoTelemetry({
           event_type: 'pitch_reached',
           watch_time_seconds: current,
           session_id: visitorId,
+          ...leadData,
         })
         dispatchPixelEvent('pitch')
         const payload = {
@@ -113,6 +116,7 @@ export function useVideoTelemetry({
           event_type: 'cta_reached',
           watch_time_seconds: current,
           session_id: visitorId,
+          ...leadData,
         })
       }
     }
@@ -126,6 +130,7 @@ export function useVideoTelemetry({
         event_type: 'progress_100',
         watch_time_seconds: duration,
         session_id: visitorId,
+        ...leadData,
       })
       dispatchPixelEvent('percent_100')
     }

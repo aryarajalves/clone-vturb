@@ -9,11 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 
 BRT_TZ = ZoneInfo("America/Sao_Paulo")
 
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.database import get_db
-from app.models.video import Video, VideoAnalytics
+from app.models.video import Video, VideoAnalytics, VideoLead
 from app.models.user import User
 from app.api.deps import get_current_user
 from app.services.storage import storage_service
@@ -28,7 +29,12 @@ from app.schemas.video import (
     CtaMetric,
     BulkDeleteRequest,
     BulkDeleteResponse,
+    VideoLeadPlayPayload,
+    VideoLeadItemResponse,
+    VideoLeadsListResponse,
 )
+
+logger = logging.getLogger("projetovturb")
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
@@ -214,6 +220,174 @@ def delete_video(
     return None
 
 
+def process_lead_play(db: Session, payload: VideoLeadPlayPayload) -> VideoLead:
+    video = db.query(Video).filter(Video.id == payload.video_id).first()
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
+
+    lead: Optional[VideoLead] = None
+    if payload.lead_id:
+        lead = db.query(VideoLead).filter(
+            VideoLead.video_id == payload.video_id,
+            VideoLead.lead_id == payload.lead_id
+        ).first()
+    if not lead and payload.phone:
+        lead = db.query(VideoLead).filter(
+            VideoLead.video_id == payload.video_id,
+            VideoLead.phone == payload.phone
+        ).first()
+
+    cta_time_sec = 0
+    if video.player_settings:
+        cta_time_sec = int(video.player_settings.get("cta_time") or 0)
+        if cta_time_sec <= 0 and isinstance(video.player_settings.get("pitch_delay"), dict):
+            cta_time_sec = int(video.player_settings.get("pitch_delay", {}).get("time") or 0)
+
+    dur = video.duration or 0.0
+    w_time = float(payload.watch_time_seconds or 0.0)
+    prog_pct = float(payload.progress_percent or 0.0)
+    if prog_pct == 0.0 and dur > 0 and w_time > 0:
+        prog_pct = min(100.0, round((w_time / dur) * 100.0, 1))
+
+    is_cta_reached = 1 if (cta_time_sec > 0 and w_time >= cta_time_sec) else 0
+    now_utc = datetime.now(timezone.utc)
+
+    if lead:
+        if payload.name:
+            lead.name = payload.name
+        if payload.phone:
+            lead.phone = payload.phone
+        if payload.lead_id:
+            lead.lead_id = payload.lead_id
+        if payload.session_id:
+            lead.session_id = payload.session_id
+
+        lead.play_count = (lead.play_count or 1) + 1
+        if w_time > (lead.watch_time_seconds or 0.0):
+            lead.watch_time_seconds = w_time
+        if prog_pct > (lead.max_progress_percent or 0.0):
+            lead.max_progress_percent = prog_pct
+        if is_cta_reached:
+            lead.reached_cta = 1
+        lead.last_seen_at = now_utc
+    else:
+        lead = VideoLead(
+            video_id=payload.video_id,
+            lead_id=payload.lead_id,
+            name=payload.name,
+            phone=payload.phone,
+            session_id=payload.session_id,
+            event=payload.event or "vsl_play",
+            watch_time_seconds=w_time,
+            max_progress_percent=prog_pct,
+            reached_cta=is_cta_reached,
+            play_count=1,
+            first_play_at=now_utc,
+            last_seen_at=now_utc,
+            created_at=now_utc
+        )
+        db.add(lead)
+
+    # Registra o evento de 'play' no VideoAnalytics para consistência métrica geral
+    s_id = payload.session_id or payload.lead_id
+    recent_cutoff = now_utc - timedelta(seconds=1)
+    existing_analytic_play = None
+    if s_id:
+        existing_analytic_play = (
+            db.query(VideoAnalytics)
+            .filter(
+                VideoAnalytics.video_id == payload.video_id,
+                VideoAnalytics.session_id == s_id,
+                VideoAnalytics.event_type == "play",
+                VideoAnalytics.created_at >= recent_cutoff,
+            )
+            .first()
+        )
+    if not existing_analytic_play:
+        record = VideoAnalytics(
+            video_id=payload.video_id,
+            event_type="play",
+            watch_time_seconds=w_time,
+            session_id=s_id,
+            referer=None
+        )
+        db.add(record)
+
+    db.commit()
+    db.refresh(lead)
+    logger.info(f"Lead play registrado: video_id={lead.video_id}, nome={lead.name}, phone={lead.phone}, lead_id={lead.lead_id}")
+    return lead
+
+
+@router.post("/lead-event", status_code=status.HTTP_201_CREATED)
+@router.post("/lead-play", status_code=status.HTTP_201_CREATED)
+@router.post("/{video_id}/lead-play", status_code=status.HTTP_201_CREATED)
+def record_lead_play(
+    payload: VideoLeadPlayPayload,
+    video_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    if video_id and not payload.video_id:
+        payload.video_id = video_id
+    lead = process_lead_play(db, payload)
+    return {
+        "status": "ok",
+        "lead_id": lead.lead_id,
+        "video_id": lead.video_id,
+        "name": lead.name,
+        "phone": lead.phone,
+        "play_count": lead.play_count,
+        "watch_time_seconds": lead.watch_time_seconds,
+        "max_progress_percent": lead.max_progress_percent,
+        "reached_cta": bool(lead.reached_cta)
+    }
+
+
+@router.get("/{video_id}/leads", response_model=VideoLeadsListResponse)
+def get_video_leads(
+    video_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vídeo não encontrado.")
+
+    leads = (
+        db.query(VideoLead)
+        .filter(VideoLead.video_id == video_id)
+        .order_by(VideoLead.last_seen_at.desc())
+        .all()
+    )
+    total_leads = len(leads)
+    leads_reached_cta = sum(1 for l in leads if l.reached_cta)
+
+    return VideoLeadsListResponse(
+        video_id=video_id,
+        total_leads=total_leads,
+        leads_reached_cta=leads_reached_cta,
+        leads=[
+            VideoLeadItemResponse(
+                id=l.id,
+                video_id=l.video_id,
+                lead_id=l.lead_id,
+                name=l.name,
+                phone=l.phone,
+                session_id=l.session_id,
+                event=l.event or "vsl_play",
+                watch_time_seconds=float(l.watch_time_seconds or 0.0),
+                max_progress_percent=float(l.max_progress_percent or 0.0),
+                reached_cta=bool(l.reached_cta),
+                play_count=l.play_count or 1,
+                first_play_at=l.first_play_at,
+                last_seen_at=l.last_seen_at,
+                created_at=l.created_at,
+            )
+            for l in leads
+        ]
+    )
+
+
 @router.post("/{video_id}/events", status_code=status.HTTP_201_CREATED)
 def track_event(video_id: str, event: AnalyticsEventCreate, db: Session = Depends(get_db)):
     video = db.query(Video).filter(Video.id == video_id).first()
@@ -244,6 +418,52 @@ def track_event(video_id: str, event: AnalyticsEventCreate, db: Session = Depend
         referer=event.referer
     )
     db.add(record)
+
+    # Sincroniza progresso com VideoLead caso exista correspondência por lead_id, phone ou session_id
+    if event.lead_id or event.session_id or event.phone:
+        matched_lead = None
+        lead_query = db.query(VideoLead).filter(VideoLead.video_id == video_id)
+        if event.lead_id:
+            matched_lead = lead_query.filter(VideoLead.lead_id == event.lead_id).first()
+        if not matched_lead and event.phone:
+            matched_lead = lead_query.filter(VideoLead.phone == event.phone).first()
+        if not matched_lead and event.session_id:
+            matched_lead = lead_query.filter(VideoLead.session_id == event.session_id).first()
+
+        if matched_lead:
+            now_utc = datetime.now(timezone.utc)
+            matched_lead.last_seen_at = now_utc
+            if event.name and not matched_lead.name:
+                matched_lead.name = event.name
+            if event.phone and not matched_lead.phone:
+                matched_lead.phone = event.phone
+            if event.watch_time_seconds and event.watch_time_seconds > (matched_lead.watch_time_seconds or 0.0):
+                matched_lead.watch_time_seconds = event.watch_time_seconds
+
+            dur = video.duration or 0.0
+            if dur > 0 and matched_lead.watch_time_seconds > 0:
+                calc_prog = min(100.0, round((matched_lead.watch_time_seconds / dur) * 100.0, 1))
+                if calc_prog > (matched_lead.max_progress_percent or 0.0):
+                    matched_lead.max_progress_percent = calc_prog
+
+            if event.event_type == "progress_25" and (matched_lead.max_progress_percent or 0) < 25.0:
+                matched_lead.max_progress_percent = 25.0
+            elif event.event_type == "progress_50" and (matched_lead.max_progress_percent or 0) < 50.0:
+                matched_lead.max_progress_percent = 50.0
+            elif event.event_type == "progress_75" and (matched_lead.max_progress_percent or 0) < 75.0:
+                matched_lead.max_progress_percent = 75.0
+            elif event.event_type == "progress_100":
+                matched_lead.max_progress_percent = 100.0
+
+            cta_time_sec = 0
+            if video.player_settings:
+                cta_time_sec = int(video.player_settings.get("cta_time") or 0)
+                if cta_time_sec <= 0 and isinstance(video.player_settings.get("pitch_delay"), dict):
+                    cta_time_sec = int(video.player_settings.get("pitch_delay", {}).get("time") or 0)
+
+            if event.event_type in ("cta_reached", "pitch_reached") or (cta_time_sec > 0 and (matched_lead.watch_time_seconds or 0) >= cta_time_sec):
+                matched_lead.reached_cta = 1
+
     db.commit()
     return {"status": "ok", "event": event.event_type}
 

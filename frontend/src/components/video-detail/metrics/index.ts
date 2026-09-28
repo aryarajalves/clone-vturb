@@ -3,3 +3,5 @@ export { MetricsOverviewSection } from './MetricsOverviewSection'
 export { HourlyPeakSection } from './HourlyPeakSection'
 export { RetentionFunnelSection } from './RetentionFunnelSection'
 export { VTurbRetentionChart } from './VTurbRetentionChart'
+export { VTurbLeadsTable } from './VTurbLeadsTable'
+

@@ -156,3 +156,39 @@ export interface VideoMetrics {
   peak_hour?: PeakHour | null
   cta_metric?: CtaMetric | null
 }
+
+export interface VideoLead {
+  id: number
+  video_id: string
+  lead_id?: string | null
+  name?: string | null
+  phone?: string | null
+  session_id?: string | null
+  event: string
+  watch_time_seconds: number
+  max_progress_percent: number
+  reached_cta: boolean
+  play_count: number
+  first_play_at?: string | null
+  last_seen_at?: string | null
+  created_at: string
+}
+
+export interface VideoLeadsResponse {
+  video_id: string
+  total_leads: number
+  leads_reached_cta: number
+  leads: VideoLead[]
+}
+
+export interface VideoLeadPlayPayload {
+  event?: string
+  video_id: string
+  name?: string | null
+  phone?: string | null
+  lead_id?: string | null
+  session_id?: string | null
+  watch_time_seconds?: number
+  progress_percent?: number
+}
+

@@ -2,7 +2,7 @@ import React from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { BreakdownTab } from './VTurbMetricsBreakdown'
 
-export type ChartTab = 'retention' | 'hourly' | BreakdownTab
+export type ChartTab = 'retention' | 'hourly' | BreakdownTab | 'leads'
 
 interface RetentionChartNavbarProps {
   tabs: { id: ChartTab; label: string }[]

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Video } from '../../types/video'
-import { sendTelemetryEvent } from '../../services/api'
+import { sendTelemetryEvent, trackLeadPlay } from '../../services/api'
 import { useAutoplay } from '../../hooks/useAutoplay'
 import { useVideoTelemetry } from '../../hooks/useVideoTelemetry'
 import { isElementCurrentlyVisible } from './embedPlayerHelpers'
@@ -40,12 +40,56 @@ export function useEmbedPlayback({
   )
 
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [leadData, setLeadData] = useState<{ name?: string; phone?: string; lead_id?: string }>({})
+  const leadPlaySentRef = useRef(false)
+
+  // Captura dados do lead a partir de parâmetros de URL ou postMessage (VTURB_IDENTIFY)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const name = params.get('name') || params.get('lead_name') || undefined
+      const phone = params.get('phone') || params.get('whatsapp') || params.get('tel') || undefined
+      const lead_id = params.get('lead_id') || params.get('lid') || undefined
+
+      if (name || phone || lead_id) {
+        setLeadData({ name, phone, lead_id })
+      }
+
+      const handleIdentify = (e: MessageEvent) => {
+        if (e.data?.type === 'VTURB_IDENTIFY') {
+          setLeadData((prev) => ({
+            name: e.data.name || prev.name,
+            phone: e.data.phone || prev.phone,
+            lead_id: e.data.lead_id || prev.lead_id,
+          }))
+        }
+      }
+      window.addEventListener('message', handleIdentify)
+      return () => window.removeEventListener('message', handleIdentify)
+    }
+  }, [])
+
+  const triggerLeadPlay = () => {
+    if (leadPlaySentRef.current) return
+    if (leadData.name || leadData.phone || leadData.lead_id) {
+      leadPlaySentRef.current = true
+      trackLeadPlay({
+        event: 'vsl_play',
+        video_id: videoId,
+        name: leadData.name,
+        phone: leadData.phone,
+        lead_id: leadData.lead_id,
+        session_id: visitorId,
+      })
+    }
+  }
 
   const { trackImpression, handleTimeUpdateProgress, handleEndedTelemetry } = useVideoTelemetry({
     video,
     videoId,
     visitorId,
     setShowCta,
+    leadData,
   })
 
   // Monitora se o player/iframe está realmente visível na tela (evita disparo oculto em etapas anteriores de Quiz)
@@ -147,7 +191,8 @@ export function useEmbedPlayback({
       }
       videoRef.current.play().catch(() => {})
       setIsPlaying(true)
-      sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+      sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId, ...leadData })
+      triggerLeadPlay()
     }
   }
 
@@ -160,14 +205,16 @@ export function useEmbedPlayback({
     videoRef.current.play().catch(() => {})
     setIsPlaying(true)
     setIsSmartAutoplaying(false)
-    sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+    sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId, ...leadData })
+    triggerLeadPlay()
   }
 
   const handleTogglePlay = () => {
     if (!videoRef.current) return
     if (videoRef.current.paused) {
       videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
-      sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId })
+      sendTelemetryEvent(videoId, { event_type: 'play', session_id: visitorId, ...leadData })
+      triggerLeadPlay()
     } else {
       videoRef.current.pause()
       setIsPlaying(false)

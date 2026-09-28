@@ -45,6 +45,24 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
     2. **Marcador Vertical no Gráfico de Retenção** (`🎯 Oferta MM:SS`) indicando visualmente na curva onde a oferta entra.
     3. **Barra Destacada no Funil de Retenção** exibindo a conversão até o momento da CTA junto aos marcos de 25%, 50%, 75% e 100%.
 - [x] Todo cálculo de data, filtros de período (Hoje, Ontem, etc.) e distribuição horária (00h às 23h) é obrigatoriamente referenciado no Horário Oficial de Brasília (BRT / UTC-3, fuso America/Sao_Paulo).
+- [x] **Rastreamento e Histórico de Contatos / Leads na VSL**:
+  - **Recepção de Leads via POST**: Endpoint aberto (`POST /videos/lead-event` e `POST /videos/lead-play`) preparado para receber o payload de identificação de play:
+    ```json
+    {
+      "event": "vsl_play",
+      "video_id": "<uuid-do-video>",
+      "name": "Nome do Lead",
+      "phone": "+55 (18) 99787-7100",
+      "lead_id": "20260928-164404-3054288f"
+    }
+    ```
+  - **Captura Flexível Dupla**: Além do webhook/POST direto, o player embedado captura automaticamente parâmetros da URL do `<iframe>` (`?name=...&phone=...&lead_id=...`) e eventos `window.postMessage({ type: 'VTURB_IDENTIFY', name, phone, lead_id })`, disparando a identificação no primeiro play do visitante.
+  - **Sincronização Temporal Contínua**: À medida que o lead assiste a VSL, eventos de telemetria (`progress_25`, `progress_50`, `progress_75`, `progress_100` e alcance do momento da oferta `cta_reached` / `pitch_reached`) atualizam dinamicamente a retenção máxima do contato e marcam se ele alcançou a oferta.
+  - **Visualização Dedicada na Aba "Contatos" do Card de Métricas**:
+    - Sub-aba dedicada **"Contatos"** incorporada à barra de navegação do gráfico de retenção oficial do VTurb.
+    - **Cards de Resumo**: Total de contatos únicos que deram play, total e % que chegaram na oferta e retenção média.
+    - **Tabela com Visual Dark Neon**: Exibição de Avatar + Nome do contato, WhatsApp formatado com link direto para conversa (`https://wa.me/...`), Lead ID com botão de cópia de 1 clique, data e horário do play formatados no Horário Oficial de Brasília (`DD/MM/YYYY às HH:mm`), barra de progresso visual com tempo assistido (`MM:SS`) e badge indicativo de oferta alcançada (`🎯 Chegou na Oferta`).
+
 
 ---
 

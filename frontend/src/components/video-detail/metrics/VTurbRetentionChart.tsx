@@ -5,6 +5,7 @@ import { VTurbMetricsBreakdown, type BreakdownTab } from './VTurbMetricsBreakdow
 import { RetentionChartNavbar, type ChartTab } from './RetentionChartNavbar'
 import { RetentionChartCanvas } from './RetentionChartCanvas'
 import { RetentionChartScrubber } from './RetentionChartScrubber'
+import { VTurbLeadsTable } from './VTurbLeadsTable'
 import {
   formatTime,
   getTimeTicks,
@@ -20,7 +21,7 @@ import {
 interface VTurbRetentionChartProps {
   video: Video
   metrics: VideoMetrics
-  defaultTab?: 'retention' | 'hourly' | BreakdownTab
+  defaultTab?: ChartTab
 }
 
 export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
@@ -143,6 +144,7 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
     { id: 'os', label: 'Sistema Operacional' },
     { id: 'browsers', label: 'Navegadores' },
     { id: 'traffic', label: 'Origem do Tráfego' },
+    { id: 'leads', label: 'Contatos' },
   ]
 
   const isGraphView = activeTab === 'retention' || activeTab === 'hourly'
@@ -248,6 +250,8 @@ export const VTurbRetentionChart: React.FC<VTurbRetentionChartProps> = ({
             ))}
           </div>
         </div>
+      ) : activeTab === 'leads' ? (
+        <VTurbLeadsTable video={video} />
       ) : (
         <VTurbMetricsBreakdown tab={activeTab as BreakdownTab} />
       )}

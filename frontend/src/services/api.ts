@@ -32,7 +32,7 @@ export function authHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` }
 }
 
-function handleAuthResponse(res: Response): void {
+export function handleAuthResponse(res: Response): void {
   if (res.status === 401) {
     removeAuthToken()
     if (typeof window !== 'undefined') {
@@ -40,6 +40,9 @@ function handleAuthResponse(res: Response): void {
     }
   }
 }
+
+export { fetchVideoLeads, trackLeadPlay } from './leadsApi'
+
 
 export async function loginApi(credentials: { email: string; password: string }): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE}/auth/login`, {
@@ -186,6 +189,9 @@ export async function sendTelemetryEvent(
     watch_time_seconds?: number
     session_id?: string
     referer?: string
+    lead_id?: string
+    name?: string
+    phone?: string
   }
 ): Promise<void> {
   try {
