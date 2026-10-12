@@ -1,10 +1,10 @@
-# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.1.3`
+# Smart VSL - Player de Alta Conversão e Hospedagem de Vídeos `v1.1.4`
 
-[![Versão](https://img.shields.io/badge/versão-1.1.3-blue.svg)](README.md)
+[![Versão](https://img.shields.io/badge/versão-1.1.4-blue.svg)](README.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white)](docker/docker-compose-prod.yml)
 [![Testes](https://img.shields.io/badge/testes-100%25%20passando-success.svg)](README.md)
 
-Plataforma completa de alta performance para hospedagem, gerenciamento e reprodução de vídeos de vendas (VSLs) de alta conversão. O sistema conta com **Frontend** em React (Vite + TypeScript), **Backend** em Python (FastAPI + SQLAlchemy), banco de dados **PostgreSQL** orquestrado via **Docker**, suporte a armazenamento local e em nuvem via **Backblaze B2 Object Storage**, e auditoria automatizada de segurança de dependências.
+Plataforma completa de alta performance para hospedagem, gerenciamento e reprodução de vídeos de vendas (VSLs) de alta conversão. O sistema conta com **Frontend** em React (Vite + TypeScript), **Backend** em Python (FastAPI + SQLAlchemy), banco de dados **PostgreSQL** orquestrado via **Docker**, suporte a armazenamento local e em nuvem via **Backblaze B2 Object Storage**, entrega acelerada via **Cloudflare CDN**, e auditoria automatizada de segurança de dependências.
 
 ---
 
@@ -44,9 +44,9 @@ Plataforma completa de alta performance para hospedagem, gerenciamento e reprodu
 - **Modo Vertical Celular (9:16) & Capítulos do Vídeo**:
   - Suporte nativo ao formato vertical 9:16 ideal para vídeos estilo Shorts, Reels e TikTok.
   - Marcadores de capítulos navegáveis com tempo, título descritivo e switch de ativação rápida.
-- **Gráfico de Retenção VTurb com Player Centralizado**:
-  - Visualização de pico e curva de retenção por segundo com thumbnail e player sincronizado.
-  - Sub-abas de métricas detalhadas com taxas de engajamento e filtros temporais.
+- **Gráfico Oficial de Retenção VTurb**:
+  - Curva de retenção neon e audiência segundo a segundo com thumbnail central em proporção widescreen 16:9 dinâmica e adaptativa.
+  - Sub-abas de métricas detalhadas com taxas de engajamento, conversão de CTA e filtros temporais.
 
 ### 🔐 Autenticação e Segurança de Acesso
 - **Tela de Login Moderna**: Layout em 2 colunas com formulário de login (e-mail, senha com visualização toggle e loading) à esquerda e imagem/showcase com tema de alta conversão à direita.
@@ -64,7 +64,9 @@ Plataforma completa de alta performance para hospedagem, gerenciamento e reprodu
 
 ### 👥 Gestão de Usuários e Controle de Acesso
 - **Identificação do Usuário na Barra Lateral**: Card fixo no rodapé da Sidebar exibindo o avatar dinâmico com inicial, nome completo e e-mail do usuário logado.
-- **Restrição Rigorosa ao Super Admin**: O botão "Gestão de Usuário" na barra lateral e o acesso ao painel são restritos **exclusivamente** ao Super Admin oficial. Para administradores comuns e usuários normais, o botão não é exibido e qualquer tentativa de acesso via API retorna `HTTP 403 Forbidden`.
+- **Acesso para Super Admin e Administrador**: O botão "Gestão de Usuário" na barra lateral e o acesso ao painel estão disponíveis tanto para o **Super Admin** oficial quanto para usuários com perfil **Admin**. Usuários comuns (`role: 'user'`) têm o acesso bloqueado com `HTTP 403 Forbidden`.
+- **Ocultação da Conta do Super Admin para Administradores**: Administradores comuns gerenciam a equipe normalmente, mas a conta do Super Admin oficial é completamente oculta da listagem e dos filtros para garantir discrição e soberania administrativa.
+- **Ações de Conta do Administrador**: Na conta do próprio Administrador logado, os botões de **Redefinir Senha (🔑)** e **Editar (✏️)** ficam totalmente acessíveis, enquanto o botão de exclusão permanece bloqueado para evitar auto-remoção acidental.
 - **Edição de Usuários e Redefinição Administrativa**: Modal para edição rápida de nome e e-mail de usuários cadastrados, além de botão para disparo de redefinição de senha com modal de confirmação.
 - **Abas Dedicadas com Contadores**: Separação clara entre **"Usuários Ativos"** e **"Convites Gerados"**, cada uma com contadores numéricos dinâmicos em tempo real.
 - **SuperAdmin Oficial Único**: Protegido e vinculado estritamente ao e-mail definido em `SUPER_ADMIN_EMAIL` na `.env`, exibido na lista com badge exclusivo `SUPERADMIN` e proteção contra exclusão via interface e backend (`HTTP 400`). Demais cadastros são automaticamente normalizados como administradores ou usuários padrão.

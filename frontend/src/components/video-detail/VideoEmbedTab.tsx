@@ -164,6 +164,7 @@ export const VideoEmbedTab: React.FC<VideoEmbedTabProps> = ({ video, showToast, 
         copied={copied}
         onCopy={handleCopy}
         embedUrl={embedUrl}
+        previewTestUrl={previewTestUrl}
       />
     </div>
   )

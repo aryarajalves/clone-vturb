@@ -74,12 +74,34 @@ describe('UserManagementView - Gestão de Usuários e Convites', () => {
     vi.mocked(api.bulkDeleteInvites).mockResolvedValue({ deleted_count: 2, deleted_ids: ['inv-1', 'inv-2'] })
   })
 
-  it('bloqueia acesso quando usuário não for Super Admin', async () => {
+  it('bloqueia acesso quando usuário for usuário comum (não admin nem super admin)', async () => {
     const showToast = vi.fn()
-    render(<UserManagementView currentUser={mockNormalAdmin} showToast={showToast} />)
+    render(<UserManagementView currentUser={mockStandardUser} showToast={showToast} />)
 
     expect(screen.getByTestId('user-management-unauthorized')).toBeInTheDocument()
     expect(screen.getByText('Acesso Restrito')).toBeInTheDocument()
+  })
+
+  it('permite acesso para Administrador (Admin), mas OCULTA a conta do Super Admin', async () => {
+    const showToast = vi.fn()
+    render(<UserManagementView currentUser={mockNormalAdmin} showToast={showToast} />)
+
+    expect(screen.queryByTestId('user-management-unauthorized')).not.toBeInTheDocument()
+    expect(screen.getByTestId('user-management-view')).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-role-filter')).toBeInTheDocument()
+      expect(screen.getByText('gerente@vturb.com')).toBeInTheDocument()
+      expect(screen.getByText('cliente@vturb.com')).toBeInTheDocument()
+    })
+
+    // Mas a conta do Super Admin NUNCA aparece para o Admin
+    expect(screen.queryByText('admin@vturb.com')).not.toBeInTheDocument()
+    expect(screen.queryByText('Super Admin Oficial')).not.toBeInTheDocument()
+
+    // O filtro de funções não exibe a opção de Super Admin para o Admin
+    const filterSelect = screen.getByTestId('select-role-filter')
+    expect(filterSelect.textContent).not.toContain('Super Admin')
   })
 
   it('renderiza corretamente a tela e lista de usuários para o Super Admin', async () => {
@@ -406,4 +428,31 @@ describe('UserManagementView - Gestão de Usuários e Convites', () => {
     fireEvent.click(screen.getByTestId('btn-close-reset-password-success'))
     expect(screen.queryByTestId('reset-password-modal-content')).not.toBeInTheDocument()
   })
+
+  it('exibe botões de editar e redefinir senha para a conta do próprio administrador logado, ocultando exclusão', async () => {
+    // Simula tela acessada pelo mockNormalAdmin (Admin comum)
+    vi.mocked(api.fetchUsers).mockResolvedValue([mockNormalAdmin])
+    const showToast = vi.fn()
+
+    render(<UserManagementView currentUser={mockNormalAdmin} showToast={showToast} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`user-row-${mockNormalAdmin.id}`)).toBeInTheDocument()
+    })
+
+    // Na própria conta do admin:
+    // 1. Checkbox deve ser bloqueado com cadeado (para não se auto-excluir em lote)
+    expect(screen.getByTestId(`protected-user-${mockNormalAdmin.id}`)).toBeInTheDocument()
+    expect(screen.queryByTestId(`checkbox-user-${mockNormalAdmin.id}`)).not.toBeInTheDocument()
+
+    // 2. Botão de Redefinir Senha DEVE estar visível
+    expect(screen.getByTestId(`btn-reset-password-${mockNormalAdmin.id}`)).toBeInTheDocument()
+
+    // 3. Botão de Editar DEVE estar visível
+    expect(screen.getByTestId(`btn-edit-user-${mockNormalAdmin.id}`)).toBeInTheDocument()
+
+    // 4. Botão de Excluir NÃO deve estar visível (para não se auto-excluir)
+    expect(screen.queryByTestId(`btn-delete-user-${mockNormalAdmin.id}`)).not.toBeInTheDocument()
+  })
 })
+

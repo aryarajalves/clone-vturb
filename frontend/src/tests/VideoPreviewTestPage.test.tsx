@@ -151,4 +151,24 @@ describe('VideoPreviewTestPage - Página de Teste Completa com Scroll', () => {
 
     window.location = originalLocation
   })
+
+  it('VideoEmbedTab: botões do snippet box apontam para o site completo e player isolado', () => {
+    render(
+      <VideoEmbedTab
+        video={mockVideo}
+        showToast={vi.fn()}
+      />
+    )
+
+    const fullPageBtn = screen.getByTestId('embed-open-preview-btn') as HTMLAnchorElement
+    expect(fullPageBtn).toBeInTheDocument()
+    expect(fullPageBtn.href).toContain('preview=preview-test-video-123')
+    expect(fullPageBtn.textContent).toContain('Abrir Site Completo em Nova Aba')
+    expect(fullPageBtn.target).toBe('_blank')
+
+    const isolatedBtn = screen.getByTestId('embed-open-isolated-btn') as HTMLAnchorElement
+    expect(isolatedBtn).toBeInTheDocument()
+    expect(isolatedBtn.href).toContain('embed=preview-test-video-123')
+    expect(isolatedBtn.target).toBe('_blank')
+  })
 })

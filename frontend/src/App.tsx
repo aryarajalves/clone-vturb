@@ -23,6 +23,7 @@ import { AcceptInviteView } from './components/auth/AcceptInviteView'
 import { ResetPasswordView } from './components/auth/ResetPasswordView'
 import { BackupManagementView } from './components/backup/BackupManagementView'
 import { VideoPreviewTestPage } from './components/preview/VideoPreviewTestPage'
+import { DocumentationView } from './components/docs'
 import './App.css'
 
 function App() {
@@ -65,12 +66,12 @@ function App() {
       ? searchParams.get('token') || window.location.pathname.replace('/reset-password/', '').replace('/reset-password', '')
       : null) || searchParams.get('reset-password')
 
-  type MainTab = 'videos' | 'users' | 'backups'
+  type MainTab = 'videos' | 'docs' | 'users' | 'backups'
 
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [currentTab, setCurrentTab] = useState<MainTab>(() => {
     const saved = localStorage.getItem('vturb_current_tab')
-    if (saved === 'videos' || saved === 'users' || saved === 'backups') {
+    if (saved === 'videos' || saved === 'docs' || saved === 'users' || saved === 'backups') {
       return saved as MainTab
     }
     return 'videos'
@@ -194,9 +195,19 @@ function App() {
     await loadVideos()
   }
 
-  // Sanitiza a aba caso o usuário logado não possua permissão de super admin
+  // Sanitiza a aba caso o usuário logado não possua permissão correspondente
   useEffect(() => {
-    if (currentUser && !currentUser.is_super_admin && (currentTab === 'users' || currentTab === 'backups')) {
+    if (!currentUser) return
+    const isSuper = Boolean(currentUser.is_super_admin || currentUser.role === 'super_admin')
+    const isAdmin = isSuper || currentUser.role === 'admin'
+
+    // Backup Automático é exclusivo para Super Admin oficial
+    if (currentTab === 'backups' && !isSuper) {
+      setCurrentTab('videos')
+      localStorage.setItem('vturb_current_tab', 'videos')
+    }
+    // Gestão de Usuários é permitida para Super Admin e Administrador
+    else if (currentTab === 'users' && !isAdmin) {
       setCurrentTab('videos')
       localStorage.setItem('vturb_current_tab', 'videos')
     }
@@ -345,14 +356,17 @@ function App() {
 
       {/* Layout Principal */}
       <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
-        {/* Barra Lateral Global (Meus vídeos, Backup Automático e Gestão de Usuário) - Oculta durante a edição ou criação */}
-        {!selectedVideo && !isCreatingVideo && (
+        {/* Barra Lateral Global - Oculta durante edição, criação e Central de Ajuda */}
+        {!selectedVideo && !isCreatingVideo && currentTab !== 'docs' && (
           <Sidebar
             currentTab={currentTab}
             user={currentUser}
             onSelectTab={(tab) => {
-              // Garante que apenas SuperAdmin possa alternar para as abas restritas
-              if ((tab === 'users' || tab === 'backups') && !currentUser?.is_super_admin) {
+              // Garante que apenas SuperAdmin acesse backups, e SuperAdmin/Admin acesse users
+              if (tab === 'backups' && !currentUser?.is_super_admin) {
+                return
+              }
+              if (tab === 'users' && !currentUser?.is_super_admin && currentUser?.role !== 'admin') {
                 return
               }
               setCurrentTab(tab)
@@ -363,7 +377,7 @@ function App() {
           />
         )}
 
-        {/* Alternância entre Tela de Lista, Painel de Criação, Gerenciamento de Vídeo, Gestão de Usuários ou Backup */}
+        {/* Alternância entre Tela de Lista, Painel de Criação, Gerenciamento de Vídeo, Documentação, Gestão de Usuários ou Backup */}
         {selectedVideo ? (
           <VideoDetailView
             video={selectedVideo}
@@ -385,7 +399,14 @@ function App() {
             }}
             showToast={showToast}
           />
-        ) : currentTab === 'users' && currentUser?.is_super_admin ? (
+        ) : currentTab === 'docs' ? (
+          <DocumentationView
+            onBack={() => {
+              setCurrentTab('videos')
+              localStorage.setItem('vturb_current_tab', 'videos')
+            }}
+          />
+        ) : currentTab === 'users' && (currentUser?.is_super_admin || currentUser?.role === 'admin') ? (
           <UserManagementView currentUser={currentUser} showToast={showToast} />
         ) : currentTab === 'backups' && currentUser?.is_super_admin ? (
           <BackupManagementView showToast={showToast} />

@@ -22,7 +22,7 @@ from app.schemas.backup import (
 )
 from app.services.backup_manager import BackupManager
 from app.services.backblaze import backblaze_backup_service
-from app.api.users import require_super_admin
+from app.api.users import require_strict_super_admin as require_super_admin
 
 logger = logging.getLogger("projetovturb")
 

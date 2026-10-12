@@ -320,8 +320,8 @@ def test_delete_invite():
     del_not_found = client.delete(f"/users/invites/{inv_id}", headers=headers)
     assert del_not_found.status_code == 404
 
-def test_non_super_admin_cannot_access_user_management():
-    # Cria usuário não-super admin
+def test_non_privileged_user_cannot_access_user_management():
+    # Cria usuário comum (role='user')
     db = SessionLocal()
     non_super_email = f"standard_{datetime.now().timestamp()}@test.com"
     non_super_pass = "TestPassword@1234"
@@ -330,7 +330,7 @@ def test_non_super_admin_cannot_access_user_management():
             email=non_super_email,
             name="Normal User",
             password_hash=hash_password(non_super_pass),
-            role="admin",
+            role="user",
             is_super_admin=False
         )
         db.add(user)
@@ -338,7 +338,7 @@ def test_non_super_admin_cannot_access_user_management():
     finally:
         db.close()
 
-    # Faz login como o usuário não-super admin
+    # Faz login como o usuário comum
     res_login = client.post("/auth/login", json={
         "email": non_super_email,
         "password": non_super_pass
@@ -350,7 +350,7 @@ def test_non_super_admin_cannot_access_user_management():
     # Tentativa de listar usuários retorna 403
     r_list = client.get("/users/", headers=headers)
     assert r_list.status_code == 403
-    assert "Super Admin" in r_list.json()["detail"]
+    assert "Super Admin" in r_list.json()["detail"] or "Administradores" in r_list.json()["detail"]
 
     # Tentativa de criar convite retorna 403
     r_inv = client.post("/users/invites", headers=headers, json={"role": "user", "duration_hours": 24})
@@ -363,6 +363,44 @@ def test_non_super_admin_cannot_access_user_management():
     # Tentativa de deletar convite retorna 403
     r_del_inv = client.delete("/users/invites/fake-id", headers=headers)
     assert r_del_inv.status_code == 403
+
+def test_admin_role_can_access_user_management():
+    # Cria usuário com perfil admin
+    db = SessionLocal()
+    admin_email = f"admin_role_{datetime.now().timestamp()}@test.com"
+    admin_pass = "AdminPassword@1234"
+    try:
+        user = User(
+            email=admin_email,
+            name="Admin Role User",
+            password_hash=hash_password(admin_pass),
+            role="admin",
+            is_super_admin=False
+        )
+        db.add(user)
+        db.commit()
+    finally:
+        db.close()
+
+    res_login = client.post("/auth/login", json={
+        "email": admin_email,
+        "password": admin_pass
+    })
+    assert res_login.status_code == 200
+    token = res_login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Administrador consegue listar usuários com sucesso (200), mas NÃO vê a conta do Super Admin
+    r_list = client.get("/users/", headers=headers)
+    assert r_list.status_code == 200
+    users_returned = r_list.json()
+    assert isinstance(users_returned, list)
+    assert not any(u["email"] == settings.SUPER_ADMIN_EMAIL.lower() for u in users_returned)
+    assert not any(u.get("is_super_admin") is True or u.get("role") == "super_admin" for u in users_returned)
+
+    # Administrador consegue listar convites (200)
+    r_inv = client.get("/users/invites", headers=headers)
+    assert r_inv.status_code == 200
 
 def test_super_admin_always_at_top_of_list():
     token = get_admin_token()

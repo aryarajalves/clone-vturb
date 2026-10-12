@@ -260,5 +260,28 @@ describe('VTurbRetentionChart - Gráfico Oficial VTurb com Vídeo Centralizado',
     const retention = screen.getByTestId('vturb-tooltip-retention')
     expect(retention).toHaveTextContent('5,26%')
   })
+
+  it('renderiza a thumbnail central com proporção 16:9 widescreen e adapta para 9:16 em vídeos verticais', () => {
+    // 1. Vídeo padrão widescreen (16:9)
+    const { unmount } = render(<VTurbRetentionChart video={mockVideo} metrics={mockMetrics} />)
+    const widescreenWrapper = screen.getByTestId('vturb-chart-video-thumbnail')
+    expect(widescreenWrapper).toHaveStyle({ width: '400px' })
+    expect(widescreenWrapper.style.aspectRatio).toBe('16 / 9')
+    unmount()
+
+    // 2. Vídeo vertical estilo shorts / reels (9:16)
+    const verticalVideo: Video = {
+      ...mockVideo,
+      player_settings: {
+        ...mockVideo.player_settings,
+        aspect_ratio: '9:16',
+      },
+    }
+    render(<VTurbRetentionChart video={verticalVideo} metrics={mockMetrics} />)
+    const verticalWrapper = screen.getByTestId('vturb-chart-video-thumbnail')
+    expect(verticalWrapper).toHaveStyle({ width: '140px' })
+    expect(verticalWrapper.style.aspectRatio).toBe('9 / 16')
+  })
 })
+
 

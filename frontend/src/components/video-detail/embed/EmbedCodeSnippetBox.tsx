@@ -8,6 +8,7 @@ interface EmbedCodeSnippetBoxProps {
   copied: boolean
   onCopy: () => void
   embedUrl: string
+  previewTestUrl?: string
 }
 
 export const EmbedCodeSnippetBox: React.FC<EmbedCodeSnippetBoxProps> = ({
@@ -17,6 +18,7 @@ export const EmbedCodeSnippetBox: React.FC<EmbedCodeSnippetBoxProps> = ({
   copied,
   onCopy,
   embedUrl,
+  previewTestUrl,
 }) => {
   return (
     <div
@@ -161,23 +163,67 @@ export const EmbedCodeSnippetBox: React.FC<EmbedCodeSnippetBoxProps> = ({
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <a
-          href={embedUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: '#4f46e5',
-            fontSize: '0.875rem',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            fontWeight: 600,
-            textDecoration: 'none',
-          }}
-        >
-          Abrir Player em Nova Aba <ExternalLink size={14} />
-        </a>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+          paddingTop: '0.75rem',
+          borderTop: '1px solid #f1f5f9',
+        }}
+      >
+        <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+          💡 Visualize como seus visitantes verão o vídeo em uma página real com todas as informações.
+        </span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          {/* Link Secundário: Player Isolado */}
+          <a
+            href={embedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="embed-open-isolated-btn"
+            title="Abrir apenas o player em tela cheia isolada"
+            style={{
+              color: '#64748b',
+              fontSize: '0.82rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              fontWeight: 500,
+              textDecoration: 'none',
+            }}
+          >
+            Ver Player Isolado <ExternalLink size={13} />
+          </a>
+
+          {/* Botão Primário: Site Completo com Vídeo no Topo */}
+          <a
+            href={previewTestUrl || embedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="embed-open-preview-btn"
+            title="Abrir página completa com vídeo no topo e todas as informações de venda"
+            style={{
+              background: 'linear-gradient(135deg, #4f46e5, #4338ca)',
+              color: '#ffffff',
+              fontSize: '0.85rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+              padding: '0.55rem 1.1rem',
+              borderRadius: '8px',
+              boxShadow: '0 2px 5px rgba(79, 70, 229, 0.25)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Abrir Site Completo em Nova Aba <ExternalLink size={14} />
+          </a>
+        </div>
       </div>
     </div>
   )

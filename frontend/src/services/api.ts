@@ -234,7 +234,12 @@ export function getMediaUrl(url?: string): string {
   if (!url) return ''
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
     // Corrige URL do Backblaze B2 quando montada erroneamente com /file/ no endpoint S3
-    return url.replace(/(https?:\/\/s3\.[^/]+\.backblazeb2\.com)\/file\//, '$1/')
+    let normalized = url.replace(/(https?:\/\/s3\.[^/]+\.backblazeb2\.com)\/file\//, '$1/')
+    // Corrige URL de CDN Backblaze/Cloudflare se tiver sido salva sem o segmento obrigatório /file/
+    if (normalized.includes('/zap-voice/') && !normalized.includes('/file/zap-voice/') && !normalized.includes('.backblazeb2.com')) {
+      normalized = normalized.replace('/zap-voice/', '/file/zap-voice/')
+    }
+    return normalized
   }
   return `${API_BASE}${url}`
 }

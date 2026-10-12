@@ -29,6 +29,12 @@ export const RetentionChartCanvas: React.FC<RetentionChartCanvasProps> = ({
   ctaLabel,
   children,
 }) => {
+  // Proporção de acordo com o vídeo (16:9 padrão, 9:16 vertical ou 1:1 quadrado)
+  const isVertical = video.player_settings?.aspect_ratio === '9:16'
+  const isSquare = video.player_settings?.aspect_ratio === '1:1'
+  const aspectRatioValue = isVertical ? '9 / 16' : isSquare ? '1 / 1' : '16 / 9'
+  const defaultWidth = isVertical ? '140px' : isSquare ? '230px' : '400px'
+
   return (
     <div
       ref={chartRef}
@@ -73,14 +79,16 @@ export const RetentionChartCanvas: React.FC<RetentionChartCanvasProps> = ({
           top: '10px',
           bottom: '20px',
           transform: 'translateX(-50%)',
-          width: '160px',
+          width: defaultWidth,
+          aspectRatio: aspectRatioValue,
+          maxWidth: '85%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
           borderRadius: '8px',
-          boxShadow: '0 0 25px rgba(0, 0, 0, 0.9)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 0 35px rgba(0, 0, 0, 0.95)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           zIndex: 1,
           pointerEvents: 'none',
         }}

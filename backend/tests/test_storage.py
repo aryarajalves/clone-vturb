@@ -54,9 +54,57 @@ def test_storage_service_upload_to_backblaze_with_cdn():
         assert args[2].endswith(".mp4")        # Chave do arquivo
         assert kwargs["ExtraArgs"]["ContentType"] == "video/mp4"
 
-        # Verifica a URL retornada com o domínio de CDN
-        assert result_url.startswith("https://videos.meudominio.com/")
+        # Verifica a URL retornada com o domínio de CDN no formato amigável exigido pelo Backblaze B2
+        assert result_url.startswith("https://videos.meudominio.com/file/meu-bucket-vturb/")
         assert result_url.endswith(".mp4")
+
+
+def test_storage_service_upload_to_backblaze_with_cdn_missing_file_prefix():
+    """Valida que uma CDN configurada como https://midia.dominio.com/bucket ganha /file/ automaticamente."""
+    mock_s3 = MagicMock()
+
+    with patch.object(settings, "BACKBLAZE_KEY_ID", "key123"), \
+         patch.object(settings, "BACKBLAZE_APPLICATION_KEY", "secret123"), \
+         patch.object(settings, "BACKBLAZE_BUCKET_NAME", "zap-voice"), \
+         patch.object(settings, "BACKBLAZE_ENDPOINT_URL", "https://s3.us-west-004.backblazeb2.com"), \
+         patch.object(settings, "BACKBLAZE_CDN_URL", "https://midia.aryaraj.shop/zap-voice"):
+
+        service = StorageService()
+        service._s3_client = mock_s3
+
+        dummy_file = io.BytesIO(b"video bytes")
+        result_url = service.upload_file(
+            file_obj=dummy_file,
+            original_filename="vsl.mp4",
+            content_type="video/mp4"
+        )
+
+        assert result_url.startswith("https://midia.aryaraj.shop/file/zap-voice/")
+        assert result_url.endswith(".mp4")
+
+
+def test_storage_service_upload_to_backblaze_with_cdn_already_has_file_prefix():
+    """Valida que uma CDN já contendo /file/<bucket> é mantida perfeitamente intacta."""
+    mock_s3 = MagicMock()
+
+    with patch.object(settings, "BACKBLAZE_KEY_ID", "key123"), \
+         patch.object(settings, "BACKBLAZE_APPLICATION_KEY", "secret123"), \
+         patch.object(settings, "BACKBLAZE_BUCKET_NAME", "zap-voice"), \
+         patch.object(settings, "BACKBLAZE_ENDPOINT_URL", "https://s3.us-west-004.backblazeb2.com"), \
+         patch.object(settings, "BACKBLAZE_CDN_URL", "https://midia.aryaraj.shop/file/zap-voice"):
+
+        service = StorageService()
+        service._s3_client = mock_s3
+
+        dummy_file = io.BytesIO(b"imagem bytes")
+        result_url = service.upload_file(
+            file_obj=dummy_file,
+            original_filename="capa.jpg",
+            content_type="image/jpeg"
+        )
+
+        assert result_url.startswith("https://midia.aryaraj.shop/file/zap-voice/")
+        assert result_url.endswith(".jpg")
 
 
 def test_storage_service_upload_to_backblaze_direct_endpoint():

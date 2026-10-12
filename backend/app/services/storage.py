@@ -50,6 +50,36 @@ class StorageService:
             )
         return self._s3_client
 
+    def build_public_url(self, unique_key: str) -> str:
+        """
+        Monta a URL pública acessível para um arquivo armazenado no Backblaze B2.
+        Garante conformidade com o formato de Friendly URLs exigido pelo Backblaze B2
+        ao entregar através de CDN/Cloudflare (/file/<bucket>/<arquivo>).
+        """
+        bucket = settings.BACKBLAZE_BUCKET_NAME.strip()
+        if settings.BACKBLAZE_CDN_URL:
+            base_url = settings.BACKBLAZE_CDN_URL.strip().rstrip("/")
+            # Se for endpoint S3 oficial (s3.*.backblazeb2.com), a API S3 não utiliza o segmento /file/
+            if re.match(r"https?://s3\.[^/]+\.backblazeb2\.com", base_url):
+                base_url = re.sub(r"(https?://s3\.[^/]+\.backblazeb2\.com)/file", r"\1", base_url)
+                if not base_url.endswith(f"/{bucket}"):
+                    base_url = f"{base_url}/{bucket}"
+            else:
+                # É um domínio customizado ou CDN Cloudflare (ex: midia.aryaraj.shop)
+                # O Backblaze B2 exige obrigatoriamente o prefixo /file/<bucket>/ para Friendly URLs
+                if f"/file/{bucket}" in base_url:
+                    pass
+                elif base_url.endswith(f"/{bucket}"):
+                    base_url = re.sub(rf"/{re.escape(bucket)}$", f"/file/{bucket}", base_url)
+                else:
+                    base_url = f"{base_url}/file/{bucket}"
+            return f"{base_url}/{unique_key}"
+
+        endpoint = settings.BACKBLAZE_ENDPOINT_URL.strip().rstrip("/")
+        if not endpoint.startswith("http"):
+            endpoint = f"https://{endpoint}"
+        return f"{endpoint}/{bucket}/{unique_key}"
+
     def upload_file(
         self,
         file_obj: BinaryIO,
@@ -91,18 +121,7 @@ class StorageService:
                     ExtraArgs=extra_args
                 )
 
-                # Monta a URL pública (CDN customizada ou Endpoint B2)
-                if settings.BACKBLAZE_CDN_URL:
-                    base_url = settings.BACKBLAZE_CDN_URL.rstrip("/")
-                    # Corrige se a URL da CDN contiver /file/ em endpoint S3 (s3.*.backblazeb2.com/file/)
-                    base_url = re.sub(r"(https?://s3\.[^/]+\.backblazeb2\.com)/file", r"\1", base_url)
-                    public_url = f"{base_url}/{unique_key}"
-                else:
-                    endpoint = settings.BACKBLAZE_ENDPOINT_URL.rstrip("/")
-                    if not endpoint.startswith("http"):
-                        endpoint = f"https://{endpoint}"
-                    public_url = f"{endpoint}/{settings.BACKBLAZE_BUCKET_NAME}/{unique_key}"
-
+                public_url = self.build_public_url(unique_key)
                 logger.info(f"Upload concluído com sucesso no Backblaze B2: {public_url}")
                 return public_url
 

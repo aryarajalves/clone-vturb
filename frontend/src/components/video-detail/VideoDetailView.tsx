@@ -31,7 +31,10 @@ export const VideoDetailView: React.FC<VideoDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState<ActiveTab>('settings')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%', height: '100%', minHeight: 0, overflow: 'hidden' }}>
+    <div
+      data-testid="video-detail-view"
+      style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%', height: '100%', minHeight: 0, overflow: 'hidden' }}
+    >
       {/* Topo / Header da Mídia (Fixo e visível durante rolagem) */}
       <div
         data-testid="detail-header"

@@ -251,4 +251,94 @@ describe('App Dashboard VTurb Layout', () => {
     })
     expect(localStorage.getItem('vturb_current_tab')).toBe('videos')
   })
+
+  it('oculta a Sidebar ao acessar a Central de Ajuda e a restaura ao clicar em Voltar', async () => {
+    await act(async () => {
+      render(<App />)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sidebar')).toBeInTheDocument()
+    })
+
+    // Clica no botão Central de Ajuda na Sidebar
+    const helpBtn = screen.getByTestId('nav-central-ajuda')
+    await act(async () => {
+      fireEvent.click(helpBtn)
+    })
+
+    // Central de Ajuda deve ser renderizada e a Sidebar principal deve DESAPARECER
+    await waitFor(() => {
+      expect(screen.getByTestId('documentation-view')).toBeInTheDocument()
+      expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
+    })
+
+    // Clica no botão "Voltar para Meus Vídeos"
+    const backBtn = screen.getByTestId('btn-back-to-videos')
+    await act(async () => {
+      fireEvent.click(backBtn)
+    })
+
+    // A Sidebar principal reaparece e volta para Meus Vídeos
+    await waitFor(() => {
+      expect(screen.getByTestId('sidebar')).toBeInTheDocument()
+      expect(screen.getByTestId('page-title')).toHaveTextContent('Meus vídeos')
+      expect(screen.queryByTestId('documentation-view')).not.toBeInTheDocument()
+    })
+  })
+
+  it('permite que usuário com perfil Admin acesse a aba Gestão de Usuário sem ser redirecionado', async () => {
+    const adminUser = {
+      id: 'admin-456',
+      email: 'aryarajunity@gmail.com',
+      role: 'admin',
+      is_super_admin: false,
+      created_at: new Date().toISOString(),
+    }
+
+    global.fetch = vi.fn().mockImplementation((url: RequestInfo | URL) => {
+      const urlStr = url.toString()
+      if (urlStr.includes('/auth/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(adminUser),
+        })
+      }
+      if (urlStr.includes('/users')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([adminUser]),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      })
+    })
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sidebar')).toBeInTheDocument()
+    })
+
+    // Botão de Gestão de Usuário deve estar presente para Admin
+    const userMgmtBtn = screen.getByTestId('nav-gestao-usuarios')
+    expect(userMgmtBtn).toBeInTheDocument()
+
+    // Clica no botão Gestão de Usuário
+    await act(async () => {
+      fireEvent.click(userMgmtBtn)
+    })
+
+    // Deve abrir e permanecer na visualização de Gestão de Usuários
+    await waitFor(() => {
+      expect(screen.getByTestId('user-management-view')).toBeInTheDocument()
+    })
+    expect(localStorage.getItem('vturb_current_tab')).toBe('users')
+  })
 })
+
+

@@ -33,6 +33,7 @@ export const UserTableRow: React.FC<UserTableRowProps> = ({
   onDelete,
 }) => {
   const isSuper = user.is_super_admin || user.role === 'super_admin'
+  const isSelf = Boolean(currentUser && user.id === currentUser.id)
   const initial = (user.name?.charAt(0) || user.email.charAt(0) || 'U').toUpperCase()
 
   const formatDate = (dateStr?: string) => {
@@ -183,10 +184,24 @@ export const UserTableRow: React.FC<UserTableRowProps> = ({
         {formatDate(user.created_at)}
       </td>
 
-      {/* Ações: Editar e Excluir */}
+      {/* Ações: Editar, Redefinir Senha e Excluir */}
       <td style={{ padding: '0.9rem 1.25rem', textAlign: 'right' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-          {isSelectable ? (
+          {isSuper ? (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                fontSize: '0.75rem',
+                color: '#94a3b8',
+                fontWeight: 500,
+              }}
+            >
+              <Lock size={14} />
+              <span>Protegido</span>
+            </span>
+          ) : (
             <>
               {/* Botão de Edição de Usuário */}
               <button
@@ -232,42 +247,30 @@ export const UserTableRow: React.FC<UserTableRowProps> = ({
                 <KeyRound size={15} />
               </button>
 
-              {/* Botão de Exclusão de Usuário */}
-              <button
-                type="button"
-                data-testid={`btn-delete-user-${user.id}`}
-                onClick={() => onDelete(user)}
-                title="Excluir usuário"
-                style={{
-                  padding: '0.45rem',
-                  borderRadius: '8px',
-                  border: '1px solid #fecaca',
-                  backgroundColor: '#fef2f2',
-                  color: '#ef4444',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <Trash2 size={15} />
-              </button>
+              {/* Botão de Exclusão de Usuário (oculto se for a própria conta) */}
+              {!isSelf && (
+                <button
+                  type="button"
+                  data-testid={`btn-delete-user-${user.id}`}
+                  onClick={() => onDelete(user)}
+                  title="Excluir usuário"
+                  style={{
+                    padding: '0.45rem',
+                    borderRadius: '8px',
+                    border: '1px solid #fecaca',
+                    backgroundColor: '#fef2f2',
+                    color: '#ef4444',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
             </>
-          ) : (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.3rem',
-                fontSize: '0.75rem',
-                color: '#94a3b8',
-                fontWeight: 500,
-              }}
-            >
-              <Lock size={14} />
-              <span>Protegido</span>
-            </span>
           )}
         </div>
       </td>

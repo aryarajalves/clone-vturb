@@ -42,4 +42,13 @@ describe('getMediaUrl - Sanitização e Normalização de URLs de Mídia', () =>
     expect(getMediaUrl(brokenEast)).toBe('https://s3.us-east-005.backblazeb2.com/meu-bucket/video.mp4')
     expect(getMediaUrl(brokenEu)).toBe('https://s3.eu-central-003.backblazeb2.com/meu-bucket/video.mp4')
   })
+
+  it('normaliza URLs de CDN personalizadas do Backblaze garantindo o segmento obrigatório /file/', () => {
+    const cdnVideoWithoutFile = 'https://midia.aryaraj.shop/zap-voice/fb685461-805f-4d26-87fc-a2196f1221cc.mp4'
+    const expectedCdnVideo = 'https://midia.aryaraj.shop/file/zap-voice/fb685461-805f-4d26-87fc-a2196f1221cc.mp4'
+    expect(getMediaUrl(cdnVideoWithoutFile)).toBe(expectedCdnVideo)
+
+    const cdnVideoWithFile = 'https://midia.aryaraj.shop/file/zap-voice/fb685461-805f-4d26-87fc-a2196f1221cc.mp4'
+    expect(getMediaUrl(cdnVideoWithFile)).toBe(expectedCdnVideo)
+  })
 })

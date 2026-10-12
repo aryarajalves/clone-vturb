@@ -7,8 +7,11 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 ## 1. Importação e Hospedagem de Vídeos
 - [x] Cada vídeo cadastrado possui título, URL do vídeo, capa e opções visuais.
 - [x] O upload inicial de vídeo aceita tanto arquivos locais (armazenados em static/uploads) quanto URLs diretas de CDN/S3/HLS, bem como upload de imagens para capas de thumbnail.
-- [x] A criação/upload de novos vídeos é realizada em uma visualização de tela cheia dedicada (`VideoCreateView`) com a mesma identidade visual e estrutura de cabeçalho do editor de vídeos (`VideoDetailView`), substituindo popups ou modais antigos. Ao confirmar a criação com sucesso, a interface transiciona diretamente para o painel de edição do vídeo criado.
-- [ ] [NOVO] Quais são as credenciais do Backblaze B2 (Key ID, Application Key, Bucket Name, Endpoint URL) ou se utilizaremos Cloudflare CDN como proxy de banda gratuita?
+- [x] Hospedagem e CDN de Vídeos com Backblaze B2 e Cloudflare:
+  - Bucket: `zap-voice`
+  - Endpoint: `https://s3.us-west-004.backblazeb2.com`
+  - CDN Cloudflare CNAME: `https://midia.aryaraj.shop/file/zap-voice` (amigável, tráfego gratuito via Bandwidth Alliance e cache edge no Brasil).
+  - O sistema gera e normaliza URLs garantindo conformidade com o formato `/file/<bucket>/<arquivo>`.
 
 ---
 
@@ -142,9 +145,10 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 ## 8. Gestão de Usuários, Links de Convite e Cadastro Seguro
 - [x] **Hierarquia de Perfis e Permissões**:
   - `SuperAdmin`: Perfil mestre oficial do sistema. Visualiza os botões "Gestão de Usuário" e "Backup Automático". É imutável, nunca pode ser excluído nem via endpoint individual nem em lote (`HTTP 400`). Nunca pode ser criado via convite.
-  - `Admin`: Perfil administrativo criado via link de convite.
+  - `Admin`: Perfil administrativo criado via link de convite. Possui acesso total e visualiza o botão "Gestão de Usuário" na barra lateral para convidar e gerenciar usuários, não possuindo acesso à rotina de Backup Automático.
+  - **Ocultação da Conta do Super Admin para Administradores**: Quando um usuário com perfil `Admin` acessar a tela de Gestão de Usuários, a conta do Super Admin oficial é completamente oculta da listagem (tanto no backend `/users/` quanto nos contadores e tabela do frontend), impedindo que o Administrador visualize os dados ou a existência da conta do Super Admin. O filtro de funções para o Admin também omite a opção "Super Admin".
   - `Usuário`: Perfil de usuário padrão criado via link de convite.
-  - Usuários comuns e administradores não visualizam os botões de Gestão de Usuário nem de Backup Automático na barra lateral.
+  - Usuários comuns (`role: 'user'`) não visualizam os botões de Gestão de Usuário nem de Backup Automático na barra lateral.
   - Nenhum usuário pode excluir a si mesmo enquanto estiver autenticado.
 - [x] **Abas e Paginação**:
   - Abas separadas para "Usuários Ativos" e "Convites Gerados" com contadores dinâmicos.
@@ -187,6 +191,34 @@ Documento de referência para decisões de arquitetura e produto do ProjetoVturb
 
 ---
 
-## 10. Persistência de Navegação e Tela Inicial
+## 10. Persistência de Navegação, Tela Inicial e Categorização da Barra Lateral
 - [x] **Tela Inicial Obrigatória no Login**: Toda vez que o usuário realizar login no sistema (primeiro acesso ou nova autenticação após logout/expiração), a aplicação é direcionada invariavelmente para a tela inicial **"Meus vídeos"**, garantindo consistência no ponto de partida do fluxo de trabalho.
 - [x] Ao recarregar a página (F5 ou refresh do navegador) durante uma sessão já autenticada e ativa, a aplicação restaura automaticamente a última página/aba carregada (armazenada em `localStorage` com as chaves `vturb_current_tab`, `vturb_user_tab` e `vturb_backup_tab`), garantindo que o usuário nunca perca seu contexto de trabalho.
+- [x] **Categorização Visual da Barra Lateral (Sidebar)**:
+  - Os botões da barra lateral são organizados em duas categorias com rótulos em caixa alta e estilo discreto:
+    1. **"GERAL"**: Agrupa as funções principais do dia a dia do usuário: **Meus vídeos** e **Central de Ajuda**.
+    2. **"SEGURANÇA & ACESSO"**: Agrupa as funções sensíveis de administração: **Backup Automático** (exclusivo Super Admin) e **Gestão de Usuário** (Super Admin e Admin). Separada por uma divisória sutil superior e exibida apenas se o usuário logado tiver nível administrativo (Admin ou Super Admin). Usuários comuns (`role: 'user'`) não visualizam essa categoria nem seus itens.
+
+---
+
+## 11. Central de Ajuda & Tutoriais Integrados
+- [x] **Nomenclatura Amigável para Usuário Comum**: Renomeada de "Documentação" para **"Central de Ajuda"** (com ícone amigável `HelpCircle`), evitando termos técnicos de programadores e facilitando a localização de tutoriais por usuários comuns e gestores de tráfego.
+- [x] **Posicionamento no Menu Lateral**: O botão "Central de Ajuda" fica posicionado **logo abaixo do botão "Meus vídeos"** na barra lateral, acessível para todos os perfis autenticados.
+- [x] **Ocultação da Barra Lateral Principal do Sistema**: Ao acessar a Central de Ajuda, a barra lateral principal do sistema é ocultada para liberar 100% da largura útil da interface. No topo da Central de Ajuda, é exibido o botão **"← Voltar para Meus Vídeos"**, que ao ser clicado redireciona para a lista de vídeos e restaura imediatamente a barra lateral principal.
+- [x] **Menu Lateral de Tópicos Fixo com Scroll Isolado**: A lista lateral com os tópicos da Central de Ajuda permanece fixa e **nunca sai da tela** quando o usuário gira o scroll do mouse. A rolagem de leitura ocorre exclusivamente e de forma independente no painel de conteúdo à direita.
+- [x] **Capturas Reais Ilustrativas (Screenshots) da Ferramenta**: Cada tópico da Central de Ajuda é ilustrado com prints reais capturados diretamente do sistema em funcionamento (`/help-screenshots/`), exibidos em molduras refinadas estilo navegador escuro com cantos arredondados, sombras suaves e legendas explicativas com ícone de câmera.
+- [x] **Conteúdo Modular e Didático**: A Central de Ajuda é organizada em tópicos com passos sequenciais numerados, badges indicativos, caixas de dicas ("💡 Dica de Desempenho", "⚠️ Atenção"), exemplos práticos de código com botão de cópia rápida e botões de navegação "Anterior" e "Próximo".
+- [x] **Ferramentas Documentadas**:
+  1. *Primeiros Passos & Criação de Vídeos* (upload, formatos suportados e thumbnails).
+  2. *Estilização & Personalização do Player* (cores, cantos arredondados, widescreen 16:9 vs vertical 9:16).
+  3. *Modo Turbo* (aceleração de 0.5x a 2.0x com pitch correction para preservação do tom de voz).
+  4. *Smart Autoplay & Desbloqueio de Som* (políticas anti-bloqueio e desbloqueio no primeiro clique).
+  5. *Pitch Delay & Botão de Compra* (ocultar botões de checkout e sincronizar com `.delay-pitch`).
+  6. *Player Flutuante* (Picture-in-Picture ao rolar a página).
+  7. *Como Incorporar no seu Site* (guias para WordPress, Elementor, Shopify, ClickFunnels e HTML).
+  8. *Métricas, Retenção & Rastreamento de Leads* (leitura da curva de retenção oficial VTurb e WhatsApp dos leads).
+  9. *Gestão de Usuários & Convites* (funções de equipe e controle de acessos).
+- [x] **Exclusão de Infraestrutura Interna**: A rotina técnica de Backup Automático no S3 é mantida fora da documentação pública para manter o foco exclusivo no uso comercial do player e conversão de VSL.
+- [x] **Busca em Tempo Real**: Campo de pesquisa instantâneo que filtra por título, descrição, categoria ou passos, com tela de fallback amigável quando nenhum termo for encontrado.
+
+

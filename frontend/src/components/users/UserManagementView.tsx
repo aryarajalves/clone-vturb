@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   Users,
   UserPlus,
@@ -36,6 +36,14 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     return 'users'
   })
   const [users, setUsers] = useState<User[]>([])
+
+  // Se o usuário logado for Admin (não Super Admin), a conta do Super Admin é oculta
+  const isSuper = Boolean(currentUser?.is_super_admin || currentUser?.role === 'super_admin')
+  const visibleUsers = useMemo(() => {
+    if (isSuper) return users
+    return users.filter((u) => !u.is_super_admin && u.role !== 'super_admin')
+  }, [users, isSuper])
+
   const [invites, setInvites] = useState<UserInvite[]>([])
   const [loading, setLoading] = useState(true)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
@@ -147,8 +155,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     }
   }
 
-  // Se não for Super Admin, bloqueia acesso
-  if (currentUser && !currentUser.is_super_admin && currentUser.role !== 'super_admin') {
+  // Se não for Super Admin nem Administrador, bloqueia acesso
+  const isPrivilegedUser =
+    Boolean(currentUser?.is_super_admin) ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'admin'
+
+  if (currentUser && !isPrivilegedUser) {
     return (
       <div
         data-testid="user-management-unauthorized"
@@ -181,7 +194,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
           Acesso Restrito
         </h2>
         <p style={{ color: '#64748b', maxWidth: '420px', fontSize: '0.9rem', lineHeight: '1.5' }}>
-          Apenas o Super Administrador tem permissão para visualizar e gerenciar as contas de usuários.
+          Apenas Administradores têm permissão para visualizar e gerenciar as contas de usuários.
         </p>
       </div>
     )
@@ -296,7 +309,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
               color: activeTab === 'users' ? '#0284c7' : '#64748b',
             }}
           >
-            {users.length}
+            {visibleUsers.length}
           </span>
         </button>
 
@@ -343,7 +356,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         </div>
       ) : activeTab === 'users' ? (
         <UsersTable
-          users={users}
+          users={visibleUsers}
           currentUser={currentUser}
           onDeleteUser={(u) => setUserToDelete(u)}
           onBulkDeleteUsers={(ids) => setBulkUsersToDelete(ids)}

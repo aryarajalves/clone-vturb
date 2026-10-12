@@ -43,16 +43,24 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     return true
   }
 
-  // 1. Super Admin SEMPRE no topo absoluto da lista
+  const isSuper = Boolean(currentUser?.is_super_admin || currentUser?.role === 'super_admin')
+
+  // Se o usuário logado for Admin (não Super Admin), oculta a conta do Super Admin
+  const visibleUsers = useMemo(() => {
+    if (isSuper) return users
+    return users.filter((u) => !u.is_super_admin && u.role !== 'super_admin')
+  }, [users, isSuper])
+
+  // 1. Super Admin SEMPRE no topo absoluto da lista (quando visível)
   const sortedUsers = useMemo(() => {
-    return [...users].sort((a, b) => {
+    return [...visibleUsers].sort((a, b) => {
       const isASuper = a.is_super_admin || a.role === 'super_admin'
       const isBSuper = b.is_super_admin || b.role === 'super_admin'
       if (isASuper && !isBSuper) return -1
       if (!isASuper && isBSuper) return 1
       return 0
     })
-  }, [users])
+  }, [visibleUsers])
 
   // 2. Filtro por tipo/função de usuário (Super Admin, Admin, Usuário)
   const filteredUsers = useMemo(() => {
@@ -218,7 +226,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               }}
             >
               <option value="all">Todas as Funções</option>
-              <option value="super_admin">Super Admin</option>
+              {isSuper && <option value="super_admin">Super Admin</option>}
               <option value="admin">Administrador (Admin)</option>
               <option value="user">Usuário</option>
             </select>

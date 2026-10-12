@@ -53,5 +53,11 @@ describe('Preview Subcomponents', () => {
     expect(screen.getByText(/Área de Teste do Player Flutuante/i)).toBeInTheDocument()
     expect(screen.getByText(/Tecnologia de VSL Projetada para Máxima Conversão/i)).toBeInTheDocument()
     expect(screen.getByText(/Garantia Incondicional de 7 Dias/i)).toBeInTheDocument()
+    // Novos elementos do site completo
+    expect(screen.getByText(/Grade Curricular Completa/i)).toBeInTheDocument()
+    expect(screen.getByText(/O Que Você Vai Aprender Passo a Passo/i)).toBeInTheDocument()
+    expect(screen.getByText(/Bônus Exclusivos de Ação Rápida/i)).toBeInTheDocument()
+    expect(screen.getByText(/Perguntas Frequentes/i)).toBeInTheDocument()
+    expect(screen.getByText(/Acesso Completo & Vitalício/i)).toBeInTheDocument()
   })
 })

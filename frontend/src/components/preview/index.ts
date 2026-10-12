@@ -2,4 +2,8 @@ export { VideoPreviewTestPage } from './VideoPreviewTestPage';
 export { PreviewTopHeader } from './PreviewTopHeader';
 export { PreviewPlayerWrapper } from './PreviewPlayerWrapper';
 export { PreviewMockLandingPageSections } from './PreviewMockLandingPageSections';
+export { PreviewAudienceAndBenefits } from './PreviewAudienceAndBenefits';
+export { PreviewModulesSection } from './PreviewModulesSection';
+export { PreviewPricingAndBonuses } from './PreviewPricingAndBonuses';
+export { PreviewFaqAndFooter } from './PreviewFaqAndFooter';
 export { useFloatingPlayerObserver } from './useFloatingPlayerObserver';

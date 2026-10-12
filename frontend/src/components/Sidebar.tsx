@@ -1,10 +1,10 @@
 import React from 'react'
-import { Video as VideoIcon, Users, Database } from 'lucide-react'
+import { Video as VideoIcon, Users, Database, HelpCircle } from 'lucide-react'
 import type { User } from '../types/auth'
 
 interface SidebarProps {
-  currentTab?: 'videos' | 'users' | 'backups'
-  onSelectTab?: (tab: 'videos' | 'users' | 'backups') => void
+  currentTab?: 'videos' | 'docs' | 'users' | 'backups'
+  onSelectTab?: (tab: 'videos' | 'docs' | 'users' | 'backups') => void
   user?: User | null
 }
 
@@ -48,39 +48,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         flexShrink: 0,
       }}
     >
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <button
-          type="button"
-          data-testid="nav-meus-videos"
-          onClick={() => onSelectTab?.('videos')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            width: '100%',
-            padding: '0.85rem 1.15rem',
-            borderRadius: '12px',
-            border: 'none',
-            backgroundColor: currentTab === 'videos' ? '#e0f2fe' : 'transparent',
-            color: currentTab === 'videos' ? '#0284c7' : '#64748b',
-            fontWeight: currentTab === 'videos' ? 600 : 500,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            textAlign: 'left',
-            boxShadow: currentTab === 'videos' ? '0 2px 4px rgba(2, 132, 199, 0.08)' : 'none',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <VideoIcon size={20} color={currentTab === 'videos' ? '#0284c7' : '#64748b'} />
-          <span>Meus vídeos</span>
-        </button>
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {/* Seção GERAL */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div
+            data-testid="sidebar-section-geral"
+            style={{
+              padding: '0.25rem 0.75rem',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: '#94a3b8',
+            }}
+          >
+            Geral
+          </div>
 
-        {/* Botão de Backup Automático visível estritamente para SuperAdmin (posicionado logo acima de Gestão de Usuário) */}
-        {user?.is_super_admin && (
           <button
             type="button"
-            data-testid="nav-backup-automatico"
-            onClick={() => onSelectTab?.('backups')}
+            data-testid="nav-meus-videos"
+            onClick={() => onSelectTab?.('videos')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -89,27 +77,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
               padding: '0.85rem 1.15rem',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: currentTab === 'backups' ? '#e0f2fe' : 'transparent',
-              color: currentTab === 'backups' ? '#0284c7' : '#64748b',
-              fontWeight: currentTab === 'backups' ? 600 : 500,
+              backgroundColor: currentTab === 'videos' ? '#e0f2fe' : 'transparent',
+              color: currentTab === 'videos' ? '#0284c7' : '#64748b',
+              fontWeight: currentTab === 'videos' ? 600 : 500,
               fontSize: '0.95rem',
               cursor: 'pointer',
               textAlign: 'left',
-              boxShadow: currentTab === 'backups' ? '0 2px 4px rgba(2, 132, 199, 0.08)' : 'none',
+              boxShadow: currentTab === 'videos' ? '0 2px 4px rgba(2, 132, 199, 0.08)' : 'none',
               transition: 'all 0.2s ease',
             }}
           >
-            <Database size={20} color={currentTab === 'backups' ? '#0284c7' : '#64748b'} />
-            <span>Backup Automático</span>
+            <VideoIcon size={20} color={currentTab === 'videos' ? '#0284c7' : '#64748b'} />
+            <span>Meus vídeos</span>
           </button>
-        )}
 
-        {/* Botão de Gestão de Usuário visível estritamente para SuperAdmin */}
-        {user?.is_super_admin && (
+          {/* Botão de Central de Ajuda posicionado logo abaixo de Meus vídeos */}
           <button
             type="button"
-            data-testid="nav-gestao-usuarios"
-            onClick={() => onSelectTab?.('users')}
+            data-testid="nav-central-ajuda"
+            onClick={() => onSelectTab?.('docs')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -118,19 +104,104 @@ export const Sidebar: React.FC<SidebarProps> = ({
               padding: '0.85rem 1.15rem',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: currentTab === 'users' ? '#e0f2fe' : 'transparent',
-              color: currentTab === 'users' ? '#0284c7' : '#64748b',
-              fontWeight: currentTab === 'users' ? 600 : 500,
+              backgroundColor: currentTab === 'docs' ? '#e0f2fe' : 'transparent',
+              color: currentTab === 'docs' ? '#0284c7' : '#64748b',
+              fontWeight: currentTab === 'docs' ? 600 : 500,
               fontSize: '0.95rem',
               cursor: 'pointer',
               textAlign: 'left',
-              boxShadow: currentTab === 'users' ? '0 2px 4px rgba(2, 132, 199, 0.08)' : 'none',
+              boxShadow: currentTab === 'docs' ? '0 2px 4px rgba(2, 132, 199, 0.08)' : 'none',
               transition: 'all 0.2s ease',
             }}
           >
-            <Users size={20} color={currentTab === 'users' ? '#0284c7' : '#64748b'} />
-            <span>Gestão de Usuário</span>
+            <HelpCircle size={20} color={currentTab === 'docs' ? '#0284c7' : '#64748b'} />
+            <span>Central de Ajuda</span>
           </button>
+        </div>
+
+        {/* Seção SEGURANÇA & ACESSO (visível apenas para Super Admin e Admin) */}
+        {(user?.is_super_admin || user?.role === 'admin') && (
+          <div
+            data-testid="sidebar-section-seguranca"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.35rem',
+              borderTop: '1px solid #f1f5f9',
+              paddingTop: '1rem',
+            }}
+          >
+            <div
+              style={{
+                padding: '0.25rem 0.75rem',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: '#94a3b8',
+              }}
+            >
+              Segurança & Acesso
+            </div>
+
+            {/* Botão de Backup Automático visível estritamente para SuperAdmin */}
+            {user?.is_super_admin && (
+              <button
+                type="button"
+                data-testid="nav-backup-automatico"
+                onClick={() => onSelectTab?.('backups')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  width: '100%',
+                  padding: '0.85rem 1.15rem',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: currentTab === 'backups' ? '#e0f2fe' : 'transparent',
+                  color: currentTab === 'backups' ? '#0284c7' : '#64748b',
+                  fontWeight: currentTab === 'backups' ? 600 : 500,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  boxShadow: currentTab === 'backups' ? '0 2px 4px rgba(2, 132, 199, 0.08)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Database size={20} color={currentTab === 'backups' ? '#0284c7' : '#64748b'} />
+                <span>Backup Automático</span>
+              </button>
+            )}
+
+            {/* Botão de Gestão de Usuário visível para SuperAdmin e Admin */}
+            {(user?.is_super_admin || user?.role === 'admin') && (
+              <button
+                type="button"
+                data-testid="nav-gestao-usuarios"
+                onClick={() => onSelectTab?.('users')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  width: '100%',
+                  padding: '0.85rem 1.15rem',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: currentTab === 'users' ? '#e0f2fe' : 'transparent',
+                  color: currentTab === 'users' ? '#0284c7' : '#64748b',
+                  fontWeight: currentTab === 'users' ? 600 : 500,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  boxShadow: currentTab === 'users' ? '0 2px 4px rgba(2, 132, 199, 0.08)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Users size={20} color={currentTab === 'users' ? '#0284c7' : '#64748b'} />
+                <span>Gestão de Usuário</span>
+              </button>
+            )}
+          </div>
         )}
       </nav>
 

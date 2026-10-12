@@ -24,8 +24,8 @@ from app.services.brevo import send_password_reset_email
 logger = logging.getLogger("projetovturb.users")
 router = APIRouter(prefix="/users", tags=["Gestão de Usuários"])
 
-def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Valida se o usuário autenticado é estritamente o Super Admin oficial ou possui privilégios de Super Admin."""
+def require_strict_super_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Valida se o usuário autenticado é estritamente o Super Admin oficial."""
     official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
     is_official = (
         bool(current_user.is_super_admin) or
@@ -33,10 +33,26 @@ def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
         current_user.email.strip().lower() == official_email
     )
     if not is_official:
-        logger.warning(f"Acesso negado à Gestão de Usuários para {current_user.email} (não é Super Admin)")
+        logger.warning(f"Acesso restrito negado para {current_user.email} (requer Super Admin)")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito exclusivamente ao Super Admin."
+        )
+    return current_user
+
+def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Valida se o usuário autenticado é Super Admin oficial ou Administrador."""
+    official_email = settings.SUPER_ADMIN_EMAIL.strip().lower()
+    is_authorized = (
+        bool(current_user.is_super_admin) or
+        current_user.role in ["super_admin", "admin"] or
+        current_user.email.strip().lower() == official_email
+    )
+    if not is_authorized:
+        logger.warning(f"Acesso negado à Gestão de Usuários para {current_user.email} (não é Admin nem Super Admin)")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a Administradores e Super Admin."
         )
     return current_user
 
@@ -63,8 +79,19 @@ def list_users(
         else:
             common_users.append(u)
 
-    if super_admin_user:
-        return [super_admin_user] + common_users
+    is_requester_super_admin = (
+        bool(current_user.is_super_admin) or
+        current_user.role == "super_admin" or
+        current_user.email.strip().lower() == official_email
+    )
+
+    # SuperAdmin visualiza todos os usuários com ele próprio no topo.
+    # Administradores não visualizam a conta do Super Admin na listagem.
+    if is_requester_super_admin:
+        if super_admin_user:
+            return [super_admin_user] + common_users
+        return common_users
+
     return common_users
 
 @router.put("/{user_id}", response_model=UserResponse)
