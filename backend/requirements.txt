@@ -8,7 +8,9 @@ pydantic>=2.6.0
 pydantic-settings>=2.2.0
 # Suporte a upload de arquivos e multipart/form-data no FastAPI
 python-multipart>=0.0.9
-# Driver binário para conexão com PostgreSQL
+# Driver binário moderno (v3) padrão do SQLAlchemy 2.1+ para conexão com PostgreSQL
+psycopg[binary]>=3.1.18
+# Driver binário para conexão legado/compatibilidade com PostgreSQL
 psycopg2-binary>=2.9.9
 # ORM e toolkit SQL para gerenciamento do banco de dados
 sqlalchemy>=2.0.28
