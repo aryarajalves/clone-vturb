@@ -29,11 +29,10 @@ export const RetentionChartCanvas: React.FC<RetentionChartCanvasProps> = ({
   ctaLabel,
   children,
 }) => {
-  // Proporção de acordo com o vídeo (16:9 padrão, 9:16 vertical ou 1:1 quadrado)
+  // Proporção de acordo com o vídeo (16:9 padrão ou 9:16 vertical)
   const isVertical = video.player_settings?.aspect_ratio === '9:16'
-  const isSquare = video.player_settings?.aspect_ratio === '1:1'
-  const aspectRatioValue = isVertical ? '9 / 16' : isSquare ? '1 / 1' : '16 / 9'
-  const defaultWidth = isVertical ? '140px' : isSquare ? '230px' : '400px'
+  const aspectRatioValue = isVertical ? '9 / 16' : '16 / 9'
+  const defaultWidth = isVertical ? '140px' : '400px'
 
   return (
     <div
